@@ -1,0 +1,19 @@
+[user]
+	name = Bastian Hussi
+[core]
+	editor = nvim
+[alias]
+	st = status -sb
+	lg = log --oneline --graph --decorate --all
+	a = add .
+	cm = commit -a
+	co = checkout
+	c = checkout -
+	ft = fetch -ap
+[merge]
+	tool = nvim
+	conflictStyle = diff3
+[diff]
+	tool = nvim
+[pull]
+	rebase = true
