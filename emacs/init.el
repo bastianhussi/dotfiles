@@ -1,34 +1,34 @@
-;; TODO: Fix bugs with tab-bar
-;; TODO: Make a unified setting for character limit
-;; TODO: Make an alias for term to use vterm
+;; TODO: Create a unified setting for character limit
+;; TODO: use prescient for ivy and company
+;; TODO: check on ispell
 ;; TODO: Configure eshell (and get rid of vterm if it works well enough)
 ;; TODO: Make better lsp-ui
 ;; TODO: dap-mode
-;; TODO: learn magit
 ;; TODO: improve org-mode keybindings
 ;; TODO: use as an latex editor
 ;; TODO: whitespaces
 ;; TODO: find way to write multiline comments (NOTE: works in go-mode already)
 ;; TODO: spelling + grammer
-;; TODO: more fuzzy searching with ivy
 ;; TODO: setup dired
 ;; TODO: Fix weird escape characters when building docker images
-;; TODO: Fix bugs with emacs deamon
-;; TODO: Use hydra
+;; TODO: Fix bugs with emacs deamon and improve config
 ;; TODO: Create own keybindings with which-key description (e.g. leader+q)
 ;; TODO: tsx, jsx, vue-files
 ;; TODO: refactor
 ;; TODO: use org-file for configuration
+;; FIXME: missing output on docker build
+;; FIXME: neofetch is displayed wrong
+;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
+;; TODO: configure Eshell
 
-
+;; NOTE: do not use 'most-positive-fixnum', this will cause Emacs to freeze on the first start
 (setq gc-cons-threshold (* 100 1024 1024)
-      gc-cons-threshold most-positive-fixnum ; 2^61 bytes
       gc-cons-percentage 0.6)
 
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-            (message "Emacs loaded in %.2f seconds"
+            (message "Emacs loaded in %.2f seconds 🚀"
                      (float-time
                       (time-subtract after-init-time before-init-time)))
             (setq gc-cons-threshold (* 10 1024 1024)
@@ -66,7 +66,9 @@
       user-mail-address "bastian@ipfso.de")
 
 
-(setq custom-file (expand-file-name ".custom.el" user-emacs-directory))
+(setq user-emacs-directory (expand-file-name "~/.local/share/emacs/")
+      custom-file (expand-file-name ".custom.el" user-emacs-directory)
+      temporary-file-directory (expand-file-name "~/.cache/emacs/"))
 
 
 (set-language-environment "UTF-8")
@@ -76,8 +78,9 @@
 
 ;; (add-to-list 'default-frame-alist '(font . "Fira Code Retina 16"))
 
-;; No gtk Title bar
-(setq default-frame-alist '((undecorated . t)))
+;; No gtk-titlebar
+;; (setq default-frame-alist '((undecorated . t)))
+
 (set-frame-parameter (selected-frame) 'fullscreen 'maximized)
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 (set-frame-parameter (selected-frame) 'alpha '(95 . 95))
@@ -86,21 +89,28 @@
 (setq use-default-font-for-symbols nil
       inhibit-compacting-font-caches t)
 
-(defun set-font-faces ()
-  "Setting font faces."
-  (set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
-  (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
-  (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
-  (set-fontset-font t 'symbol "Noto Color Emoji")
-  (set-fontset-font t 'symbol "Symbola" nil 'append))
 
-(if (daemonp)
-    (add-hook 'after-make-frame-functions
-              (lambda (frame)
-                (setq doom-modeline-icon t)
-                (with-selected-frame frame
-                  (set-font-faces))))
-    (set-font-faces))
+(set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
+(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
+(set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
+(set-fontset-font t 'symbol "Noto Color Emoji")
+(set-fontset-font t 'symbol "Symbola" nil 'append)
+
+;; (defun set-font-faces ()
+;;   "Setting font faces."
+;;   (set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
+;;   (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
+;;   (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
+;;   (set-fontset-font t 'symbol "Noto Color Emoji")
+;;   (set-fontset-font t 'symbol "Symbola" nil 'append))
+
+;; (if (daemonp)
+;;     (add-hook 'after-make-frame-functions
+;;               (lambda (frame)
+;;                 (setq doom-modeline-icon t)
+;;                 (with-selected-frame frame
+;;                   (set-font-faces))))
+;;     (set-font-faces))
 
 
 (tool-bar-mode -1)
@@ -135,7 +145,8 @@
 (setq-default fill-column 99
       tab-width 4
       ;; mode-line-format " %b (%m)"
-      indent-tabs-mode nil)
+      indent-tabs-mode nil
+      tab-always-indent nil)
 
 
 ;; NOTE: fixed bug. Solution do not use global-display-line-numbers-mode at all.
@@ -186,14 +197,17 @@
 
 (global-auto-revert-mode 1)
 
+
+(make-directory temporary-file-directory t)
 (setq backup-by-copying t
       delete-old-versions t
       kept-new-versions 6
       kept-old-versions 2
       version-control t
-      temporary-file-directory "/tmp/"
+      ;; Prevent issues with build-watchers
+      create-lockfiles nil
       backup-directory-alist
-      `((".*" . ,temporary-file-directory))
+      `(("." . ,temporary-file-directory))
       auto-save-file-name-transforms
       `((".*" ,temporary-file-directory t)))
 
@@ -225,20 +239,23 @@
   (prog-mode . whitespace-mode))
 
 
-(use-package display-fill-column-indicator
-  :commands display-fill-column-indicator-mode
-  ;; Use the '~' char aka Unicode character no 126.
-  :config (setq-default display-fill-column-indicator-character 126)
-  :hook (prog-mode . display-fill-column-indicator-mode))
-
-
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
   :hook (prog-mode . auto-fill-mode))
 
 
-;; FIXME: remove when Emacs v28 gets out.
+(use-package tab-bar
+  :config
+  (setq tab-bar-close-button-show nil
+        tab-bar-new-button-show nil
+        ;; New tabs will show the scratch-buffer
+        tab-bar-new-tab-choice "*scratch*"
+        ;; Always add new tabs to the rightmost position
+        tab-bar-new-tab-to 'rightmost))
+
+
+;; TODO: remove when Emacs v28 gets out.
 (use-package undo-fu
   :ensure t
   :defer t)
@@ -251,7 +268,7 @@
         evil-want-integration t
         evil-want-fine-undo nil
         evil-want-C-i-jump t
-        ;; FIXME: Use undo-redo when Emacs v28 gets released.
+        ;; TODO: Use undo-redo when Emacs v28 gets released.
         evil-undo-system 'undo-fu
         evil-move-beyond-eol t
         ;; You can't escape vim
@@ -279,6 +296,8 @@
   (setq evil-snipe-scope 'whole-visible
         evil-snipe-repeat-scope 'whole-visible
         evil-snipe-spillover-scope 'whole-buffer)
+  ;; see: https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
+  (push 'magit-mode evil-snipe-disabled-modes)
   (evil-snipe-mode 1)
   (evil-snipe-override-mode 1))
 
@@ -294,80 +313,17 @@
     :global-prefix "C-SPC"))
 
 
-(use-package hydra
+(use-package which-key
   :ensure t
-  :defer 1)
-
-;; TODO: define hydra for increasing / decreasing font size
-
-(defhydra hydra-window-move (global-map "<f2>")
-      "move between windows"
-      ("h" evil-window-left "left")
-      ("j" evil-window-down "down")
-      ("k" evil-window-up "up")
-      ("l" evil-window-right "right"))
-
-(defhydra hydra-tab-switch ()
-      "switch tabs"
-      ("j" tab-bar-switch-to-next-tab "next")
-      ("k" tab-bar-switch-to-prev-tab "previous"))
-
-(leader-key :ifix "g"
-  "t" 'hydra-tab-switch/body :which-key "Switch tabs")
-
-
-(use-package flyspell
-  :commands (flyspell-mode flyspell-prog-mode)
+  ;; :defer 1
   :config
-  (setq flyspell-delay 0.25
-        flyspell-issue-message-flag nil)
-  :hook
-  (text-mode . flyspell-mode)
-  (prog-mode . flyspell-prog-mode))
-
-
-;; FIXME: doesn't work
-;; TODO: Only use hunspell?
-(use-package ispell
-  :after flyspell
-  :config
-  (setq ispell-program-name "hunspell"
-        ispell-dictionary "en_US,de_DE")
-  (ispell-set-spellchecker-params)
-  (ispell-hunspell-add-multi-dic "en_US,de_DE"))
-
-
-;; FIXME: missing output on docker build
-;; FIXME: neofetch is displayed wrong
-;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
-;; TODO: configure Eshell
-
-
-(use-package eshell
-  :ensure t
-  :commands eshell
-  :hook (eshell-first-time-mode . (lambda ()
-                                    (require 'esh-mode)
-                                    (require 'em-hist)
-                                    (require 'em-smart)
-                                    (setq eshell-where-to-jump 'begin
-                                          eshell-history-size 10000
-                                          eshell-buffer-maximum-lines 10000
-                                          eshell-hist-ignoredups t
-                                          eshell-scroll-to-bottom-on-input t)))
-  :config
-  (with-eval-after-load 'esh-opt
-    (setq eshell-destroy-buffer-when-process-dies t)))
-
-(use-package eterm-256color
-  :ensure t
-  :hook (term-mode . eterm-256color-mode))
+  (setq which-key-idle-delay 0.75)
+  (which-key-mode 1))
 
 
 (use-package ivy
   :ensure t
-  :init
-  (ivy-mode 1)
+  :hook (after-init . ivy-mode)
   :config
   (setq ivy-wrap t
         ;; Add bookmarks and recentf to buffer list
@@ -378,8 +334,7 @@
         ivy-on-del-error-function nil
         ;; Always use fuzzy search except swiper
         ivy-re-builders-alist
-        '((read-file-name-internal . ivy--regex-fuzzy)
-          (swiper . ivy--regex-plus)
+        '((swiper . ivy--regex-plus)
           (t . ivy--regex-plus)))
   :bind
   (:map ivy-minibuffer-map
@@ -406,54 +361,36 @@
     "fr" 'counsel-recentf))
 
 
-(use-package which-key
-  :ensure t
-  :defer 1
-  :config
-  (setq which-key-idle-delay 0.25)
-  (which-key-mode 1))
-
-
-;; TOOD: create and delete tabs with hydra
-(use-package tab-bar
-  :general
-  (general-define-key
-   :states 'normal
-   "C-t" 'tab-new
-   "C-q" 'tab-close)
-  :config
-  ;; Use the scratch buffer for new tabs
-  (setq tab-bar-new-tab-choice "*scratch*"
-        tab-bar-new-tab-to "leftmost"
-        tab-bar-close-button-show nil
-        tab-bar-new-button-show nil)
-  (tab-bar-mode 1))
-
-
-;; TODO: learn Magit!
 (use-package magit
-  :defer 1
+  ;; :defer 1
   :ensure t
+  :custom
+  (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
   :general
   (leader-key
-    "m"   '(:ignore t :which-key "Magit")
-    "ms"  'magit-status
-    "md"  'magit-diff-unstaged
-    "mc"  'magit-branch-or-checkout
-    "ml"   '(:ignore t :which-key "Log")
-    "mlc" 'magit-log-current
-    "mlf" 'magit-log-buffer-file
-    "mb"  'magit-branch
-    "mP"  'magit-push-current
-    "mp"  'magit-pull-branch
-    "mf"  'magit-fetch
-    "mF"  'magit-fetch-all
-    "mr"  'magit-rebase))
+    "g"   '(:ignore t :which-key "Git")
+    "gs"  'magit-status
+    "gd"  'magit-diff-unstaged
+    "gc"  'magit-branch-or-checkout
+    "gl"   '(:ignore t :which-key "Log")
+    "glc" 'magit-log-current
+    "glf" 'magit-log-buffer-file
+    "gb"  'magit-branch
+    "gP"  'magit-push-current
+    "gp"  'magit-pull-branch
+    "gf"  'magit-fetch
+    "gF"  'magit-fetch-all
+    "gr"  'magit-rebase))
+
+
+(use-package org
+  :ensure t
+  :defer t)
 
 
 (use-package projectile
   :ensure t
-  :defer 1
+  ;; :defer 1
   :general
   (leader-key "p"
     '(:prefix-map projectile-command-map :which-key "Project"))
@@ -463,46 +400,15 @@
   (projectile-mode 1))
 
 
-(use-package lsp-mode
+(use-package yasnippet
   :ensure t
-  :commands lsp-deferred
-  :config
-  (setq lsp-headerline-breadcrumb-enable nil
-        lsp-enable-snippet t)
-  :hook
-  (lsp-mode . (lambda ()
-                (add-hook 'before-save-hook #'lsp-format-buffer t t)
-                (add-hook 'before-save-hook #'lsp-organize-imports t t)))
-  :general
-  (leader-key "c"
-    '(:keymap lsp-command-map :which-key "Code"))
-  (general-define-key
-   :keymaps 'lsp-mode-map
-   :states 'normal
-   "gi" 'lsp-goto-implementation
-   "gr" 'lsp-find-references
-   "gd" 'lsp-find-definition
-   "gD" 'lsp-find-declaration))
-
-(use-package lsp-ui
-  :ensure t
-  :commands lsp-ui-mode
-  :config
-  (setq lsp-ui-doc-enable t
-        lsp-ui-doc-position 'at-point
-        lsp-ui-doc-delay 0.25
-        lsp-ui-doc-max-width 50
-        lsp-ui-doc-max-height 12))
-
-(use-package lsp-ivy
-  :ensure t
-  :commands lsp-ivy-workspace-symbol)
+  :commands yas-minor-mode)
 
 
 (use-package company
   :ensure t
   :commands company-mode
-  :hook ((lsp-mode emacs-lisp-mode) . company-mode)
+  :hook (prog-mode . company-mode)
   :bind
   (:map company-active-map
         ("RET" . company-complete-selection)
@@ -514,97 +420,77 @@
         company-selection-wrap-around t))
 
 
-(use-package yasnippet
-  :ensure t
-  :commands yas-minor-mode
-  :hook (lsp-mode . yas-minor-mode))
+(use-package flyspell
+  :commands (flyspell-mode flyspell-prog-mode)
+  :config
+  (setq flyspell-delay 0.25
+        flyspell-issue-message-flag nil)
+  :hook
+  (text-mode . flyspell-mode)
+  (prog-mode . flyspell-prog-mode))
 
 
-;; TODO: add support for eslint, flake8, ...
+(use-package ispell
+  :after flyspell
+  :config
+  (setq ispell-program-name "hunspell"
+        ispell-dictionary "en_US,de_DE")
+  (ispell-set-spellchecker-params)
+  (ispell-hunspell-add-multi-dic "en_US,de_DE"))
+
+
 (use-package flycheck
   :ensure t
   :commands flycheck-mode
   :bind (("C-j" . next-error) ("C-k" . previous-error))
-  :hook ((lsp-mode emacs-lisp-mode) . flycheck-mode))
+  :hook (prog-mode . flycheck-mode))
 
 
-(use-package rustic
+(use-package lsp-mode
   :ensure t
-  :mode ("\\.rs\\'" . rustic-mode)
-  :config (setq rustic-lsp-server 'rls)
-  :hook (rustic-modelsp-deferred))
+  :commands lsp-deferred
+  :hook
+  ((rustic-mode
+    go-mode
+    python-mode
+    js-mode
+    typescript-mode
+    web-mode
+    css-mode
+    sgml-mode
+    yaml-mode
+    dockerfile-mode)
+   . lsp-deferred)
+  (before-save . lsp-format-buffer)
+  :general
+  (leader-key "c"
+    '(:keymap lsp-command-map :which-key "Code"))
+  (general-define-key
+   :keymaps 'lsp-mode-map
+   :states 'normal
+   "gi" 'lsp-goto-implementation
+   "gr" 'lsp-find-references
+   "gd" 'lsp-find-definition
+   "gD" 'lsp-find-declaration)
+  :custom
+  (lsp-diagnostic-package :flycheck)
+  (lsp-prefer-capf t)
+  (read-process-output-max (* 1024 1024))
+  (lsp-rust-server 'rust-analyzer))
 
-
-(use-package go-mode
+(use-package lsp-ui
   :ensure t
-  :mode "\\.go\\'"
-  :hook (go-mode
-         . (lambda ()
-             (lsp-deferred)
-             (lsp-register-custom-settings
-              '(("gopls.completeUnimported" t t)
-                ("gopls.staticcheck" t t))))))
+  :after lsp-mode
+  :custom
+  (lsp-ui-doc-max-width 80)
+  (lsp-ui-doc-max-height 60)
+  (lsp-ui-doc-position 'at-point)
+  (lsp-ui-doc-delay 0.25))
 
-
-(use-package python
-  :mode ("\\.py\\'" . python-mode)
-  :interpreter ("python" . python-mode)
-  :hook (python-mode . lsp-deferred))
-
-
-(use-package csharp-mode
-  :disabled t
+(use-package lsp-ivy
   :ensure t
-  :mode "\\.cs\\'"
-  :hook (csharp-mode . lsp-deferred))
-
-
-(use-package lsp-java
-  :disabled t
-  :ensure t
-  :mode ("\\.java\\'" . java-mode)
-  :hook (java-mode . lsp-deferred))
-
-
-(use-package pyvenv
-  :ensure t
-  :commands pyvenv-mode
-  :hook (python-mode . pyvenv-mode))
-
-
-(use-package js
-  :mode ("\\.js\\'" . js-mode)
-  :interpreter ("javascript" . js-mode)
-  :hook (js-mode . lsp-deferred))
-
-
-(use-package typescript-mode
-  :ensure t
-  :mode "\\.ts\\'"
-  :hook (typescript-mode . lsp-deferred)
-  :config (setq typescript-indent-level 2))
-
-
-(use-package web-mode
-  :ensure t
-  :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'")
-  :hook (web-mode . lsp-deferred))
-
-
-(use-package sgml-mode
-  :mode "\\.html?\\'"
-  :hook (sgml-mode . lsp-deferred))
-
-
-(use-package css-mode
-  :mode "\\.css\\'"
-  :hook (css-mode . lsp-deferred))
-
-
-(use-package yaml-mode
-  :ensure t
-  :mode "\\.ya?ml\\'"
-  :hook (yaml-mode . lsp-deferred))
+  :after lsp-mode
+  :commands lsp-ivy-workspace-symbol)
 
 
 (use-package prettier
@@ -618,6 +504,56 @@
          . prettier-mode))
 
 
+(use-package rustic
+  :ensure t
+  :mode ("\\.rs\\'" . rustic-mode))
+
+
+(use-package go-mode
+  :ensure t
+  :mode "\\.go\\'")
+
+
+(use-package python
+  :mode ("\\.py\\'" . python-mode)
+  :interpreter ("python" . python-mode))
+
+(use-package pyvenv
+  :ensure t
+  :commands pyvenv-mode
+  :hook (python-mode . pyvenv-mode))
+
+
+(use-package js
+  :mode ("\\.js\\'" . js-mode)
+  :interpreter ("javascript" . js-mode))
+
+
+(use-package typescript-mode
+  :ensure t
+  :mode "\\.ts\\'"
+  :config
+  (setq typescript-indent-level 2))
+
+
+(use-package web-mode
+  :ensure t
+  :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'"))
+
+
+(use-package sgml-mode
+  :mode "\\.html?\\'")
+
+
+(use-package css-mode
+  :mode "\\.css\\'")
+
+
+(use-package yaml-mode
+  :ensure t
+  :mode "\\.ya?ml\\'")
+
+
 (use-package nix-mode
   :ensure t
   :mode "\\.nix\\'")
@@ -625,8 +561,7 @@
 
 (use-package dockerfile-mode
   :ensure t
-  :mode "Dockerfile\\'"
-  :hook (dockerfile-mode . lsp-deferred))
+  :mode "Dockerfile\\'")
 
 
 (add-to-list 'auto-mode-alist '("\\.service\\'" . conf-unix-mode))
@@ -642,6 +577,7 @@
 (add-to-list 'auto-mode-alist '("\\.link\\'" . conf-unix-mode))
 
 
+;; Use the escape-key to quit prompts
 (global-set-key (kbd "ESC") 'keyboard-escape-quit)
 (define-key key-translation-map (kbd "ESC") (kbd "C-g"))
 
@@ -652,31 +588,24 @@
  "C--" 'text-scale-decrease
  "C-0" 'text-scale-adjust)
 
-(defhydra hydra-zoom (global-map "<f2>")
-  "zoom"
-  ("j" text-scale-increase "increase")
-  ("k" text-scale-decrease "decrease"))
 
-
+;; TODO: use Hydra for some shortcuts
 (leader-key
   "SPC" '(dired :which-key "Directory")
-  "e" '(eshell :which-key "Eshell")
   "h" '(:keymap help-map :which-key "Help")
-  "b" '(:keymap bookmark-map :which-key "Bookmarks"))
-
-(defhydra hydra-quit ()
-      "switch tabs"
-      ("q" save-buffers-kill-terminal "Emacs")
-      ("t" tab-close "Tab")
-      ("w" delete-window "Window"))
-;; (leader-key
-;;   "q"   '(:ignore t :which-key "Quit")
-;;   "qq" '(save-buffers-kill-terminal :which-key "Emacs")
-;;   "qb" '(kill-this-buffer :which-key "Buffer")
-;;   "qt" '(tab-close :which-key "Tab")
-;;   "qw" '(delete-window :which-key "Window"))
-(leader-key
-  "q" '(hydra-quit/body :which-key "Quit"))
+  "b" '(:keymap bookmark-map :which-key "Bookmarks")
+  "n"   '(:ignore t :which-key "New")
+  "nt" '(tab-new :which-key "Tab")
+  "ne" '(eshell :which-key "Eshell")
+  "nT" '(term :which-key "Term")
+  "j"   '(:ignore t :which-key "Jump")
+  "jt" '(tab-next :which-key "Next Tab")
+  "jT" '(tab-previous :which-key "Previous Tab")
+  "q"   '(:ignore t :which-key "Quit")
+  "qq" '(save-buffers-kill-terminal :which-key "Emacs")
+  "qb" '(kill-this-buffer :which-key "Buffer")
+  "qt" '(tab-close :which-key "Tab")
+  "qw" '(delete-window :which-key "Window"))
 
 
 ;; Simulate vim-commentary
