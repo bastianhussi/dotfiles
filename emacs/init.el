@@ -12,7 +12,6 @@
 ;; TODO: setup dired
 ;; TODO: Fix weird escape characters when building docker images
 ;; TODO: Fix bugs with emacs deamon and improve config
-;; TODO: Create own keybindings with which-key description (e.g. leader+q)
 ;; TODO: tsx, jsx, vue-files
 ;; TODO: refactor
 ;; TODO: use org-file for configuration
@@ -21,19 +20,26 @@
 ;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
 ;; TODO: configure Eshell
 
+
 ;; NOTE: do not use 'most-positive-fixnum', this will cause Emacs to freeze on the first start
 (setq gc-cons-threshold (* 100 1024 1024)
       gc-cons-percentage 0.6)
 
-
 (add-hook 'emacs-startup-hook
           (lambda ()
+            ;; FIXME: isn't there already a variable for the startup time?
             (message "Emacs loaded in %.2f seconds 🚀"
                      (float-time
                       (time-subtract after-init-time before-init-time)))
             (setq gc-cons-threshold (* 10 1024 1024)
                   read-process-output-max (* 1024 1024)
                   gc-cons-percentage 0.1)))
+
+
+;; Install packages in ~/.local/share not ~/.config
+(setq user-emacs-directory (expand-file-name "~/.local/share/emacs/")
+      user-full-name "Bastian Hussi"
+      user-mail-address "bastian@ipfso.de")
 
 
 (with-eval-after-load 'gnutls
@@ -51,6 +57,8 @@
 (unless package-archive-contents
   (package-refresh-contents))
 
+
+
 (unless (package-installed-p 'use-package)
    (package-install 'use-package))
 
@@ -62,29 +70,16 @@
       initial-major-mode 'org-mode
       frame-title-format "GNU Emacs")
 
-(setq user-full-name "Bastian Hussi"
-      user-mail-address "bastian@ipfso.de")
-
-
-(setq user-emacs-directory (expand-file-name "~/.local/share/emacs/")
-      custom-file (expand-file-name ".custom.el" user-emacs-directory)
-      temporary-file-directory (expand-file-name "~/.cache/emacs/"))
-
 
 (set-language-environment "UTF-8")
 (set-default-coding-systems 'utf-8)
 (set-keyboard-coding-system 'iso-latin-1)
 
 
-;; (add-to-list 'default-frame-alist '(font . "Fira Code Retina 16"))
-
-;; No gtk-titlebar
-;; (setq default-frame-alist '((undecorated . t)))
-
 (set-frame-parameter (selected-frame) 'fullscreen 'maximized)
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
-(set-frame-parameter (selected-frame) 'alpha '(95 . 95))
-(add-to-list 'default-frame-alist `(alpha . (95 . 95)))
+(set-frame-parameter (selected-frame) 'alpha '(100 . 100))
+(add-to-list 'default-frame-alist `(alpha . (100 . 100)))
 
 (setq use-default-font-for-symbols nil
       inhibit-compacting-font-caches t)
@@ -95,22 +90,6 @@
 (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
 (set-fontset-font t 'symbol "Noto Color Emoji")
 (set-fontset-font t 'symbol "Symbola" nil 'append)
-
-;; (defun set-font-faces ()
-;;   "Setting font faces."
-;;   (set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
-;;   (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
-;;   (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
-;;   (set-fontset-font t 'symbol "Noto Color Emoji")
-;;   (set-fontset-font t 'symbol "Symbola" nil 'append))
-
-;; (if (daemonp)
-;;     (add-hook 'after-make-frame-functions
-;;               (lambda (frame)
-;;                 (setq doom-modeline-icon t)
-;;                 (with-selected-frame frame
-;;                   (set-font-faces))))
-;;     (set-font-faces))
 
 
 (tool-bar-mode -1)
@@ -143,10 +122,9 @@
 
 
 (setq-default fill-column 99
-      tab-width 4
-      ;; mode-line-format " %b (%m)"
-      indent-tabs-mode nil
-      tab-always-indent nil)
+              tab-width 4
+              indent-tabs-mode nil
+              tab-always-indent nil)
 
 
 ;; NOTE: fixed bug. Solution do not use global-display-line-numbers-mode at all.
@@ -198,6 +176,9 @@
 (global-auto-revert-mode 1)
 
 
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory)
+      temporary-file-directory (expand-file-name "~/.cache/emacs/"))
+
 (make-directory temporary-file-directory t)
 (setq backup-by-copying t
       delete-old-versions t
@@ -242,7 +223,7 @@
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
-  :hook (prog-mode . auto-fill-mode))
+  :hook ((prog-mode text-mode) . auto-fill-mode))
 
 
 (use-package tab-bar
@@ -315,7 +296,6 @@
 
 (use-package which-key
   :ensure t
-  ;; :defer 1
   :config
   (setq which-key-idle-delay 0.75)
   (which-key-mode 1))
@@ -335,7 +315,7 @@
         ;; Always use fuzzy search except swiper
         ivy-re-builders-alist
         '((swiper . ivy--regex-plus)
-          (t . ivy--regex-plus)))
+          (t . ivy--regex-fuzzy)))
   :bind
   (:map ivy-minibuffer-map
         ("RET" . ivy-done)
@@ -362,7 +342,6 @@
 
 
 (use-package magit
-  ;; :defer 1
   :ensure t
   :custom
   (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
@@ -390,7 +369,6 @@
 
 (use-package projectile
   :ensure t
-  ;; :defer 1
   :general
   (leader-key "p"
     '(:prefix-map projectile-command-map :which-key "Project"))

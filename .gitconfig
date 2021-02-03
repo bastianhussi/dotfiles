@@ -1,5 +1,6 @@
 [user]
 	name = Bastian Hussi
+	email = bastian@ipfso.de
 [core]
 	editor = nvim
 [alias]
@@ -10,6 +11,7 @@
 	co = checkout
 	c = checkout -
 	ft = fetch -ap
+	pl = pull
 [merge]
 	tool = nvim
 	conflictStyle = diff3
