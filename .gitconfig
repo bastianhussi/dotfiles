@@ -12,6 +12,7 @@
 	c = checkout -
 	ft = fetch -ap
 	pl = pull
+	ps = push
 [merge]
 	tool = nvim
 	conflictStyle = diff3

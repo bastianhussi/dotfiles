@@ -1,3 +1,4 @@
+;; NOTE: Nice config over here: https://github.com/angrybacon/dotemacs
 ;; TODO: Create a unified setting for character limit
 ;; TODO: use prescient for ivy and company
 ;; TODO: check on ispell
@@ -28,9 +29,6 @@
 (add-hook 'emacs-startup-hook
           (lambda ()
             ;; FIXME: isn't there already a variable for the startup time?
-            (message "Emacs loaded in %.2f seconds 🚀"
-                     (float-time
-                      (time-subtract after-init-time before-init-time)))
             (setq gc-cons-threshold (* 10 1024 1024)
                   read-process-output-max (* 1024 1024)
                   gc-cons-percentage 0.1)))
@@ -40,6 +38,12 @@
 (setq user-emacs-directory (expand-file-name "~/.local/share/emacs/")
       user-full-name "Bastian Hussi"
       user-mail-address "bastian@ipfso.de")
+
+;; Set the working directory to home regardless of where Emacs was started from
+(cd "~/")
+
+;; Avoid outdated byte compiled
+(setq load-prefer-newer t)
 
 
 (with-eval-after-load 'gnutls
@@ -58,12 +62,10 @@
   (package-refresh-contents))
 
 
-
 (unless (package-installed-p 'use-package)
    (package-install 'use-package))
 
 (require 'use-package)
-
 
 (setq inhibit-startup-message t
       initial-scratch-message ""
@@ -75,30 +77,30 @@
 (set-default-coding-systems 'utf-8)
 (set-keyboard-coding-system 'iso-latin-1)
 
-
-(set-frame-parameter (selected-frame) 'fullscreen 'maximized)
+;; No gtk Title bar
+(setq default-frame-alist '((undecorated . t)))
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
-(set-frame-parameter (selected-frame) 'alpha '(100 . 100))
 (add-to-list 'default-frame-alist `(alpha . (100 . 100)))
+
 
 (setq use-default-font-for-symbols nil
       inhibit-compacting-font-caches t)
 
-
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
 (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
 (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
+;; Colorful emojis
 (set-fontset-font t 'symbol "Noto Color Emoji")
 (set-fontset-font t 'symbol "Symbola" nil 'append)
 
 
+;; Toggle interface elements
 (tool-bar-mode -1)
 (tooltip-mode -1)
 (scroll-bar-mode -1)
 (menu-bar-mode -1)
 (blink-cursor-mode -1)
 (column-number-mode 1)
-(auto-insert-mode -1)
 
 
 (use-package doom-themes
@@ -106,13 +108,11 @@
   :config
   (load-theme 'doom-dracula t))
 
-;; NOTE: This costs us ~0.2 seconds startup time.
 (use-package doom-modeline
   :ensure t
   :commands doom-modeline-mode
   :custom-face
   (mode-line ((t (:height 0.90))))
-  (mode-line-active ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
   :config
   (setq doom-modeline-buffer-file-name-style
@@ -121,7 +121,9 @@
 
 
 
-(setq-default fill-column 99
+(setq-default cursor-in-non-selected-windows nil ; Hide the cursor in inactive windows
+              show-help-function nil ; Disable help text everywher
+              fill-column 99
               tab-width 4
               indent-tabs-mode nil
               tab-always-indent nil)
@@ -182,16 +184,20 @@
 (make-directory temporary-file-directory t)
 (setq backup-by-copying t
       delete-old-versions t
+      delete-by-moving-to-trash t
       kept-new-versions 6
       kept-old-versions 2
       version-control t
       ;; Prevent issues with build-watchers
       create-lockfiles nil
+      auto-save-list-file-prefix nil ;; Use ~/.cache directory instead?
       backup-directory-alist
       `(("." . ,temporary-file-directory))
       auto-save-file-name-transforms
       `((".*" ,temporary-file-directory t)))
 
+;; Insert text into new buffers based on their major mode
+(auto-insert-mode -1)
 
 (use-package elec-pair
   :commands electric-pair-mode
@@ -217,13 +223,13 @@
   (setq whitespace-line-column fill-column
         whitespace-style '(face tabs trailing lines-tail))
   :hook
-  (prog-mode . whitespace-mode))
+  ((prog-mode org-mode) . whitespace-mode))
 
 
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
-  :hook ((prog-mode text-mode) . auto-fill-mode))
+  :hook ((prog-mode org-mode) . auto-fill-mode))
 
 
 (use-package tab-bar
@@ -234,6 +240,13 @@
         tab-bar-new-tab-choice "*scratch*"
         ;; Always add new tabs to the rightmost position
         tab-bar-new-tab-to 'rightmost))
+
+(use-package dired
+  :custom
+  (dired-auto-revert-buffer t)
+  (dired-dwim-target t)
+  (dired-hide-details-hide-symlink-targets nil)
+  (dired-recursive-copies 'always))
 
 
 ;; TODO: remove when Emacs v28 gets out.
@@ -314,8 +327,8 @@
         ivy-on-del-error-function nil
         ;; Always use fuzzy search except swiper
         ivy-re-builders-alist
-        '((swiper . ivy--regex-plus)
-          (t . ivy--regex-fuzzy)))
+        '((read-file-name-internal . ivy--regex-fuzzy)
+          (t . ivy--regex-plus)))
   :bind
   (:map ivy-minibuffer-map
         ("RET" . ivy-done)
@@ -380,22 +393,36 @@
 
 (use-package yasnippet
   :ensure t
-  :commands yas-minor-mode)
-
+  :commands yas-minor-mode
+  :hook
+  (prog-mode . yas-minor-mode)
+  :bind
+  (:map yas-minor-mode-map
+        ("TAB" . nil))
+  :config
+  (yas-reload-all))
 
 (use-package company
   :ensure t
   :commands company-mode
-  :hook (prog-mode . company-mode)
+  :hook ((prog-mode org-mode) . company-mode)
   :bind
   (:map company-active-map
         ("RET" . company-complete-selection)
         ("TAB" . company-select-next)
         ("<backtab>" . company-select-previous))
-  :config
-  (setq company-idle-delay 0
-        company-minimum-prefix-length 1
-        company-selection-wrap-around t))
+  :custom
+  (company-backends '(company-capf))
+  (company-dabbrev-downcase nil)
+  (company-dabbrev-ignore-case nil)
+  (company-dabbrev-other-buffers nil)
+  (company-idle-delay 0)
+  (company-minimum-prefix-length 1)
+  (company-require-match nil)
+  (company-tooltip-width-grow-only t)
+  (company-tooltip-align-annotations t)
+  (company-tooltip-flip-when-above t)
+  (company-selection-wrap-around t))
 
 
 (use-package flyspell
@@ -421,7 +448,7 @@
   :ensure t
   :commands flycheck-mode
   :bind (("C-j" . next-error) ("C-k" . previous-error))
-  :hook (prog-mode . flycheck-mode))
+  :hook ((prog-mode org-mode) . flycheck-mode))
 
 
 (use-package lsp-mode
@@ -516,26 +543,41 @@
 
 (use-package web-mode
   :ensure t
-  :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'"))
+  :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'")
+  :hook
+  (web-mode . sgml-electric-tag-pair-mode)
+  :custom
+  (web-mode-code-indent-offset 2)
+  (web-mode-enable-auto-opening nil)
+  (web-mode-enable-auto-pairing nil)
+  (web-mode-enable-auto-quoting nil)
+  (web-mode-markup-indent-offset 2)
+  (web-mode-enable-auto-indentation nil))
 
 
 (use-package sgml-mode
-  :mode "\\.html?\\'")
+  :mode "\\.html?\\'"
+  :custom
+  (sgml-basic-offset 2))
 
 
 (use-package css-mode
-  :mode "\\.css\\'")
+  :mode "\\.css\\'"
+  :custom
+  (css-indent-offset 2))
 
+
+(use-package json-mode
+  :ensure t
+  :mode "\\.json\\'")
 
 (use-package yaml-mode
   :ensure t
   :mode "\\.ya?ml\\'")
 
-
 (use-package nix-mode
   :ensure t
   :mode "\\.nix\\'")
-
 
 (use-package dockerfile-mode
   :ensure t
@@ -599,3 +641,4 @@
 (defalias 'cp 'check-parens)
 (defalias 'lt 'load-theme)
 (defalias 'plp 'package-list-packages)
+
