@@ -29,6 +29,8 @@
   systemctl --user enable --now mpd.socket
   systemctl --user enable --now redshift.service
   systemctl --user enable --now emacs.service
+
+  systemctl enable --now fstrim.timer
   #+end_src
 ** Xorg
    #+begin_src shell
