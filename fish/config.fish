@@ -41,3 +41,11 @@ alias vimdiff='nvim -d'
 
 alias python='python3'
 alias venv='python -m venv'
+
+
+# Start X at login
+if status is-login
+    if test -z "$DISPLAY" -a "$XDG_VTNR" = 1
+        exec startx -- -keeptty
+    end
+end

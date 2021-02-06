@@ -1,0 +1,100 @@
+* Packages
+  Yay:
+  #+begin_src
+  git clone https://aur.archlinux.org/yay.git
+  cd yay
+  makepkg -sirc
+  #+end_src
+
+  #+begin_src shell
+  sudo pacman -S --needed fzf tree ripgrep git curl wget htop bat
+  #+end_src
+
+  #+begin_src shell
+  sudo pacman -S --needed redshift feh ranger pulsemixer
+  #+end_src
+
+  Bluetooth:
+  #+begin_src shell
+  sudo pacman -S bluez bluez-utils
+  #+end_src
+
+  Audio:
+  #+begin_src shell
+  sudo pacman -S pulseaudio pulseaudio-alsa pulseaudio-jack pulseaudio-equalizer pulseaudio-bluez
+  #+end_src
+
+  Enable services:
+  #+begin_src shell
+  systemctl --user enable --now mpd.socket
+  systemctl --user enable --now redshift.service
+  systemctl --user enable --now emacs.service
+  #+end_src
+** Xorg
+   #+begin_src shell
+   sudo pacman -S xorg xorg-xinit xclip
+   yay -S i3lock-color
+   #+end_src
+
+   Fonts:
+   #+begin_src shell
+   sudo pacman -S noto-fonts noto-fonts-extra noto-fonts-cjk noto-fonts-emoji \
+   ttf-liberation ttf-dejavu ttf-fira-code ttf-jetbrains-mono
+   #+end_src
+** Driver and Gaming
+   Radeon Drivers
+   #+begin_src shell
+   #+end_src
+
+   Steam, etc
+   #+begin_src shell
+   sudo pacman -S steam lutris discord
+   #+end_src
+
+   #+begin_src shell
+   yay -S xow
+   sudo systemctl --now enable xow.service
+   #+end_src
+** Printer
+* Keyring
+  #+begin_src shell
+  sudo pacman -S gnome-keyring libgnome-keyring seahorse
+  #+end_src
+  Content of /etc/pam.d/login:
+
+  #%PAM-1.0
+  auth       required     pam_securetty.so
+  auth       requisite    pam_nologin.so
+  auth       include      system-local-login
+
+  ============================================
+  auth       optional     pam_gnome_keyring.so
+  ============================================
+
+  account    include      system-local-login
+  session    include      system-local-login
+
+  =======================================================
+  session    optional     pam_gnome_keyring.so auto_start
+  =======================================================
+
+  Content of /etc/pam.d/passwd:
+
+  #%PAM-1.0
+
+  #password	required	pam_cracklib.so difok=2 minlen=8 dcredit=2 ocredit=2 retry=3
+  #password	required	pam_unix.so sha512 shadow use_authtok
+  password	required	pam_unix.so sha512 shadow nullok
+
+  ==========================================
+  password	optional	pam_gnome_keyring.so
+  ==========================================
+
+  Add this to ~/.xinitrc:
+
+  eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
+  export SSH_AUTH_SOCK
+* Default Applications
+  #+begin_src shell
+  xdg-mime default org.pwmt.zathura.desktop application/pdf
+  #+end_src
