@@ -36,15 +36,15 @@ terminal = guess_terminal()
 
 keys = [
     # Switch between windows in current stack pane
-    Key([mod], "k", lazy.layout.down(),
+    Key([mod], "j", lazy.layout.down(),
         desc="Move focus down in stack pane"),
-    Key([mod], "j", lazy.layout.up(),
+    Key([mod], "k", lazy.layout.up(),
         desc="Move focus up in stack pane"),
 
     # Move windows up or down in current stack
-    Key([mod, "control"], "k", lazy.layout.shuffle_down(),
+    Key([mod, "shift"], "j", lazy.layout.shuffle_down(),
         desc="Move window down in current stack "),
-    Key([mod, "control"], "j", lazy.layout.shuffle_up(),
+    Key([mod, "shift"], "k", lazy.layout.shuffle_up(),
         desc="Move window up in current stack "),
 
     # Switch window focus to other pane(s) of stack
@@ -65,13 +65,21 @@ keys = [
 
     # Toggle between different layouts as defined below
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
+    Key([mod], "h", lazy.layout.grow(), lazy.layout.increase_nmaster(),
+        desc="Increase size of the master window"),
+    Key([mod], "l", lazy.layout.shrink(),
+        lazy.layout.decrease_nmaster(),
+        desc="Decrease size of the master window"),
+    Key([mod], "n", lazy.layout.normalize(),
+        desc="Restore default aspect ratio"),
     Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
-
+    Key([mod], "f", lazy.window.toggle_fullscreen(), desc="Toggle fullscreen"),
+    Key([mod], "space", lazy.window.toggle_floating(), desc="Toggle floating"),
     Key([mod, "control"], "r", lazy.restart(), desc="Restart qtile"),
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown qtile"),
     Key([mod], "r", lazy.spawncmd(),
         desc="Spawn a command using a prompt widget"),
-    Key([mod], "l", lazy.spawn("lock"), desc="Launch Screensaver"),
+    Key([mod, "shift"], "l", lazy.spawn("lock"), desc="Launch Screensaver"),
     Key([mod], "b", lazy.spawn("firefox"), desc="Launch Browser"),
     Key([mod], "e", lazy.spawn("emacsclient -nc"), desc="Launch Emacs"),
     Key([], "XF86AudioMute", lazy.spawn(
@@ -94,7 +102,8 @@ for i in groups:
     keys.extend([
         Key([mod], i.name, lazy.group[i.name].toscreen(),
             desc="Switch to group {}".format(i.name)),
-        Key([mod, "shift"], i.name, lazy.window.togroup(i.name, switch_group=True),
+        Key([mod, "shift"], i.name,
+            lazy.window.togroup(i.name, switch_group=True),
             desc="Switch to & move focused window to group {}".format(i.name)),
     ])
 
@@ -150,10 +159,12 @@ screens = [
             widgets=[
                 widget.CurrentLayoutIcon(),
                 widget.GroupBox(
-                    active=colors[4][0], this_current_screen_border=colors[1][0], inactive=colors[1][0], rounded=False),
+                    active=colors[4][0],
+                    this_current_screen_border=colors[1][0],
+                    inactive=colors[1][0], rounded=False),
                 widget.Prompt(),
                 widget.WindowName(),
-                widget.Systray(icon_size=48, padding=12),
+                widget.Systray(icon_size=32, padding=10),
                 widget.MemoryGraph(),
                 widget.CPUGraph(),
                 widget.PulseVolume(),

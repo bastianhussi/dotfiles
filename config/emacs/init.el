@@ -80,12 +80,13 @@
 ;; No gtk Title bar
 (setq default-frame-alist '((undecorated . t)))
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
-(add-to-list 'default-frame-alist `(alpha . (100 . 100)))
+(add-to-list 'default-frame-alist `(alpha . (95 . 95)))
 
 
 (setq use-default-font-for-symbols nil
       inhibit-compacting-font-caches t)
 
+;; FIXME: Doesn't work with deamon
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
 (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
 (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
@@ -111,6 +112,8 @@
 (use-package doom-modeline
   :ensure t
   :commands doom-modeline-mode
+  :custom
+  (doom-modeline-icon t) ;; The icon would not be active when using the daemon
   :custom-face
   (mode-line ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
@@ -642,3 +645,35 @@
 (defalias 'lt 'load-theme)
 (defalias 'plp 'package-list-packages)
 
+
+(when (window-system)
+  (set-frame-font "Fira Code"))
+(let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
+               (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
+               (36 . ".\\(?:>\\)")
+               (37 . ".\\(?:\\(?:%%\\)\\|%\\)")
+               (38 . ".\\(?:\\(?:&&\\)\\|&\\)")
+               (42 . ".\\(?:\\(?:\\*\\*/\\)\\|\\(?:\\*[*/]\\)\\|[*/>]\\)")
+               (43 . ".\\(?:\\(?:\\+\\+\\)\\|[+>]\\)")
+               (45 . ".\\(?:\\(?:-[>-]\\|<<\\|>>\\)\\|[<>}~-]\\)")
+               (46 . ".\\(?:\\(?:\\.[.<]\\)\\|[.=-]\\)")
+               (47 . ".\\(?:\\(?:\\*\\*\\|//\\|==\\)\\|[*/=>]\\)")
+               (48 . ".\\(?:x[a-zA-Z]\\)")
+               (58 . ".\\(?:::\\|[:=]\\)")
+               (59 . ".\\(?:;;\\|;\\)")
+               (60 . ".\\(?:\\(?:!--\\)\\|\\(?:~~\\|->\\|\\$>\\|\\*>\\|\\+>\\|--\\|<[<=-]\\|=[<=>]\\||>\\)\\|[*$+~/<=>|-]\\)")
+               (61 . ".\\(?:\\(?:/=\\|:=\\|<<\\|=[=>]\\|>>\\)\\|[<=>~]\\)")
+               (62 . ".\\(?:\\(?:=>\\|>[=>-]\\)\\|[=>-]\\)")
+               (63 . ".\\(?:\\(\\?\\?\\)\\|[:=?]\\)")
+               (91 . ".\\(?:]\\)")
+               (92 . ".\\(?:\\(?:\\\\\\\\\\)\\|\\\\\\)")
+               (94 . ".\\(?:=\\)")
+               (119 . ".\\(?:ww\\)")
+               (123 . ".\\(?:-\\)")
+               (124 . ".\\(?:\\(?:|[=|]\\)\\|[=>|]\\)")
+               (126 . ".\\(?:~>\\|~~\\|[>=@~-]\\)")
+               )
+             ))
+  (dolist (char-regexp alist)
+    (set-char-table-range composition-function-table (car char-regexp)
+                          `([,(cdr char-regexp) 0 font-shape-gstring]))))

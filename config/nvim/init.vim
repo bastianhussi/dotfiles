@@ -88,14 +88,12 @@ Plug 'morhetz/gruvbox'
 Plug 'dracula/vim', { 'as': 'dracula' }
 Plug 'sonph/onehalf', { 'rtp': 'vim' }
 Plug 'arcticicestudio/nord-vim'
-Plug 'ryanoasis/vim-devicons'
 Plug 'vim-airline/vim-airline'
 Plug 'preservim/nerdtree'
 Plug 'sheerun/vim-polyglot'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
-" Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-fugitive'
 Plug 'justinmk/vim-sneak'
@@ -133,13 +131,13 @@ set termguicolors
 set background=dark
 
 " NOTE: This has to happen after the configuration above
-colorscheme onehalfdark
+colorscheme dracula
 
 
 " Airline Configuration:
 let g:airline#extensions#tabline#enabled = 1
 let g:airline_powerline_fonts = 1
-let g:airline_theme='onehalfdark'
+let g:airline_theme='dracula'
 
 
 let NERDTreeShowHidden = 1
@@ -259,3 +257,5 @@ nmap <leader>rf <Plug>(coc-refactor)
 autocmd BufNewFile,BufRead *.go setlocal noexpandtab tabstop=2 shiftwidth=2
 autocmd BufNewFile,BufRead *.js setlocal noexpandtab tabstop=2 shiftwidth=2
 autocmd BufNewFile,BufRead *.ts setlocal noexpandtab tabstop=2 shiftwidth=2
+
+autocmd BufNewFile,BufRead *.py setlocal textwidth=80 colorcolumn=80
