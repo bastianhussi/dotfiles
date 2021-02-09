@@ -86,13 +86,25 @@
 (setq use-default-font-for-symbols nil
       inhibit-compacting-font-caches t)
 
-;; FIXME: Doesn't work with deamon
-(set-face-attribute 'default nil :font "Fira Code Retina" :height 160)
-(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 160)
-(set-face-attribute 'variable-pitch nil :font "Cantarell" :height 160 :weight 'regular)
-;; Colorful emojis
-(set-fontset-font t 'symbol "Noto Color Emoji")
-(set-fontset-font t 'symbol "Symbola" nil 'append)
+
+(defun set-font-faces ()
+  "Setting up fonts + emoji support."
+
+  ;; Default font size
+  (defvar font-size 160)
+
+  (set-face-attribute 'default nil :font "Fira Code Retina" :height font-size)
+  (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height font-size)
+  (set-face-attribute 'variable-pitch nil :font "Cantarell" :height font-size :weight 'regular)
+
+  ;; Colorful emojis
+  (set-fontset-font t 'symbol "Noto Color Emoji")
+  (set-fontset-font t 'symbol "Symbola" nil 'append))
+
+
+(if (daemonp)
+    (add-hook 'server-after-make-frame-hook #'set-font-faces)
+    (set-font-faces))
 
 
 ;; Toggle interface elements
@@ -163,7 +175,7 @@
   :hook (prog-mode . hl-todo-mode))
 
 
-(setq mouse-wheel-scroll-amount '(2 ((shift) . 1))
+(setq mouse-wheel-scroll-amount '(3 ((shift) . 1))
       mouse-wheel-progressive-speed nil
       mouse-wheel-follow-mouse t)
 
@@ -644,36 +656,3 @@
 (defalias 'cp 'check-parens)
 (defalias 'lt 'load-theme)
 (defalias 'plp 'package-list-packages)
-
-
-(when (window-system)
-  (set-frame-font "Fira Code"))
-(let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
-               (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
-               (36 . ".\\(?:>\\)")
-               (37 . ".\\(?:\\(?:%%\\)\\|%\\)")
-               (38 . ".\\(?:\\(?:&&\\)\\|&\\)")
-               (42 . ".\\(?:\\(?:\\*\\*/\\)\\|\\(?:\\*[*/]\\)\\|[*/>]\\)")
-               (43 . ".\\(?:\\(?:\\+\\+\\)\\|[+>]\\)")
-               (45 . ".\\(?:\\(?:-[>-]\\|<<\\|>>\\)\\|[<>}~-]\\)")
-               (46 . ".\\(?:\\(?:\\.[.<]\\)\\|[.=-]\\)")
-               (47 . ".\\(?:\\(?:\\*\\*\\|//\\|==\\)\\|[*/=>]\\)")
-               (48 . ".\\(?:x[a-zA-Z]\\)")
-               (58 . ".\\(?:::\\|[:=]\\)")
-               (59 . ".\\(?:;;\\|;\\)")
-               (60 . ".\\(?:\\(?:!--\\)\\|\\(?:~~\\|->\\|\\$>\\|\\*>\\|\\+>\\|--\\|<[<=-]\\|=[<=>]\\||>\\)\\|[*$+~/<=>|-]\\)")
-               (61 . ".\\(?:\\(?:/=\\|:=\\|<<\\|=[=>]\\|>>\\)\\|[<=>~]\\)")
-               (62 . ".\\(?:\\(?:=>\\|>[=>-]\\)\\|[=>-]\\)")
-               (63 . ".\\(?:\\(\\?\\?\\)\\|[:=?]\\)")
-               (91 . ".\\(?:]\\)")
-               (92 . ".\\(?:\\(?:\\\\\\\\\\)\\|\\\\\\)")
-               (94 . ".\\(?:=\\)")
-               (119 . ".\\(?:ww\\)")
-               (123 . ".\\(?:-\\)")
-               (124 . ".\\(?:\\(?:|[=|]\\)\\|[=>|]\\)")
-               (126 . ".\\(?:~>\\|~~\\|[>=@~-]\\)")
-               )
-             ))
-  (dolist (char-regexp alist)
-    (set-char-table-range composition-function-table (car char-regexp)
-                          `([,(cdr char-regexp) 0 font-shape-gstring]))))

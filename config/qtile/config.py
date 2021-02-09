@@ -152,7 +152,7 @@ extension_defaults = widget_defaults.copy()
 
 screens = [
     Screen(
-        wallpaper="~/Bilder/cyberpunk.png",
+        wallpaper="~/Bilder/cyberpunk.jpg",
         wallpaper_mode="fill",
         top=bar.Bar(
             size=64,
@@ -164,6 +164,8 @@ screens = [
                     inactive=colors[1][0], rounded=False),
                 widget.Prompt(),
                 widget.WindowName(),
+                widget.KeyboardLayout(configured_keyboards=[
+                                      "de", "dvorak"]),
                 widget.Systray(icon_size=32, padding=10),
                 widget.MemoryGraph(),
                 widget.CPUGraph(),
