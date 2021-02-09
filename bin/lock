@@ -35,7 +35,6 @@ i3lock \
 --datestr="%A, %m, %Y"  \
 --wrongtext="Nope!"     \
 --veriftext="..."  \
---greetertext="$(fortune -sn80 linux)" \
 --noinputtext="Empty"  \
 \
 --wrong-font=hermit     \

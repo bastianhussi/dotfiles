@@ -1,5 +1,8 @@
 { config, pkgs, ... }:
 
+# https://codeberg.org/davidak/nixos-config
+# https://gitlab.com/felschr/nixos-config
+
 {
   imports = [
     /etc/nixos/hardware-configuration.nix
@@ -36,7 +39,10 @@
     };
   };
 
+  sound.enable = true;
+
   hardware = {
+    enableAllFirmware = true;
     cpu.amd.updateMicrocode = true;
     pulseaudio = {
       enable = true;
@@ -48,6 +54,10 @@
       enable = true;
     };
 
+    video = {
+      hidpi.enable = true;
+    };
+
     opengl = {
       driSupport = true;
       driSupport32Bit = true;
@@ -55,18 +65,21 @@
         amdvlk
         rocm-opencl-icd
         rocm-opencl-runtime
+        mesa mesa_drivers
       ];
       # NOTE: requires unstable (or 21.03)
-      extraPackages32 = with pkgs; [
-        driversi686Linux.amdvlk
+      extraPackages32 = with pkgs.driversi686Linux; [
+        amdvlk mesa
       ];
     };
   };
 
   i18n = {
-    consoleFont = "Lat2-Terminus16";
-    consoleKeyMap = "de";
     defaultLocale = "de_DE.UTF-8";
+    console = {
+      useXkbConfig = true;
+      font = "Lat2-Terminus32"
+    };
   };
 
   time = {
@@ -80,30 +93,42 @@
       enable = true;
       autohint = false;
     };
-    fontsconfig = {
-      defaultFonts = {
-        emoji = "Noto Color Emoji";
-        sansSerif = ["Noto Sans" "DejaVu Sans" "Liberation Sans"]
-      };
-    };
     subpixel = {
       lcdfilter = "default";
       rgba = "rgb";
     };
     fonts = with pkgs; [
-      corefonts roboto
-      liberation_ttf dejavu_fonts
-      terminus_fonts source-code-pro
-      fira-code fira-code-symbols
+      corefonts
+      roboto
+      liberation_ttf
+      dejavu_fonts
+      noto-fonts
+      noto-fonts-extra
+      noto-fonts-cjk
+      noto-fonts-emoji
+      fira
+      fira-code
+      fira-code-symbols
       jetbrains-mono
       nerdfonts
     ];
+    fontsconfig = {
+      defaultFonts = {
+        emoji = "Noto Color Emoji";
+        monospace = ["Fira Code" "JetBrains Mono" "emoji"]
+        sansSerif = ["Noto Sans" "DejaVu Sans" "Liberation Sans" "emoji"];
+        serif = ["Noto Serif" "DejaVu Serif" "Liberation Serif" "emoji"];
+      };
+    };
   };
 
   programs = {
     fish = {
       enable = true;
     };
+    steam.enable = true;
+    adb.enable = true;
+    gnome-terminal.enable = false;
   };
 
   nixpkgs.config = {
@@ -115,24 +140,54 @@
     go openjdk nodejs watchman rustup
     rust-analyzer gopls go-tools
     exercism
+    alacritty
     android-studio jetbrains.idea-community jetbrains.pycharm-community
     vscodium
     vivaldi vivaldi-widevine vivaldi-ffmpeg-codecs
     tor-browser-bundle-bin
     teams
+    gnomeExtensions.appindicator
+    gnome3.gnome-shell-extensions
+    gnome3.dconf-editor
+    gnome3.gnome-tweaks
     krita drawio gimp inkscape
     texlive.combined.scheme-medium
     insomnia dbeaver
     kubectl minikube
-    steam
     wine-staging # vs. winePackages.staging?
-    xow fish emacs # Is the installation if these packages necessary?
+    steam xow fish emacs # Is the installation if these packages necessary?
+  ];
+
+  environment.shellAliases = [
+    cp = "cp -i"
+    mv = "mv -i"
+    rm = "rm -I"
+    du = "du -sh"
+    free = "free -h"
+
+    python = "python3"
+    py = "python"
+    venv = "python -m venv"
+    pdb = "python -m pdb"
+  ]
+
+  environment.gnome3.excludePackages = with pkgs.gnome3; [
+    gnome-weather
+    gnome-software
+    totem
+    epiphany
+    geary
+    cheese
   ];
 
   environment.variables = {
     GOROOT = [ "${pkgs.go.out}/share/go" ];
     # see: https://nixos.org/manual/nixos/unstable/index.html#sec-gpu-accel-vulkan
-    environment.variables.VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/amd_icd64.json";
+    VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/amd_icd64.json";
+    GDK_SCALE = "2";
+    GDK_DPI_SCALE = "0.5";
+    XCURSOR_THEME = "Adwaita";
+    XCURSOR_SIZE = 48;
   };
 
   virtualisation = {
@@ -154,8 +209,19 @@
     }
   };
 
+  documentation = {
+    nixos.enable = false;
+    man.enable = true; # Default
+  };
+
   services = {
-    dbus.enable = true;
+    dbus = {
+      enable = true;
+      packages = with pkgs; [
+        gnome3.dconf
+      ];
+    };
+    fwupd.enable = true;
     fstrim = {
       enable = true;
       interval = "weekly";
@@ -182,14 +248,22 @@
     xserver = {
       enable = true;
       videoDrivers = [ "amdgpu" ];
+      dpi = 192;
+      modules = [ pkgs.xf86_input_wacom ];
       layout = "de";
       xkbOptions = "caps:escape";
       synaptics.enable = false;
-      displayManager.sddm = {
+      wacom.enable = true;
+      displayManager.gdm = {
         enable = true;
-        autoNumlock = true;
+        wayland = true; # Default?
       };
-      desktopManager.plasma5.enable = true;
+      desktopManager = {
+        gnome3 = {
+          enable = true;
+        };
+        xterm.enable = false;
+      };
     };
   };
 
@@ -198,7 +272,7 @@
       isNormalUser = true;
       description = "Bastian Hussi";
       group = "users";
-      extraGroups = ["wheel" "networkmanager" "vboxusers" "adbusers"];
+      extraGroups = ["wheel" "networkmanager" "audio" "vboxusers" "adbusers"];
       shell = pkgs.fish;
       initialHashedPassword = "";
     };
