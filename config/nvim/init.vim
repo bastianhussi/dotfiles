@@ -56,7 +56,7 @@ set incsearch
 set ignorecase
 set smartcase
 
-set signcolumn=number
+" set signcolumn=number
 
 " Switch between buffers, even if they have unsaved changes
 set hidden
@@ -85,10 +85,11 @@ let g:python3_host_prog = '/usr/bin/python3'
 
 call plug#begin('~/.local/share/nvim/plugged')
 Plug 'morhetz/gruvbox'
-Plug 'dracula/vim', { 'as': 'dracula' }
-Plug 'sonph/onehalf', { 'rtp': 'vim' }
-Plug 'arcticicestudio/nord-vim'
+" Plug 'dracula/vim', { 'as': 'dracula' }
+" Plug 'sonph/onehalf', { 'rtp': 'vim' }
+" Plug 'arcticicestudio/nord-vim'
 Plug 'vim-airline/vim-airline'
+Plug 'ryanoasis/vim-devicons'
 Plug 'preservim/nerdtree'
 Plug 'sheerun/vim-polyglot'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
@@ -131,13 +132,13 @@ set termguicolors
 set background=dark
 
 " NOTE: This has to happen after the configuration above
-colorscheme dracula
+colorscheme gruvbox
 
 
 " Airline Configuration:
 let g:airline#extensions#tabline#enabled = 1
 let g:airline_powerline_fonts = 1
-let g:airline_theme='dracula'
+let g:airline_theme='gruvbox'
 
 
 let NERDTreeShowHidden = 1
@@ -193,6 +194,7 @@ let g:coc_global_extensions = [
             \ "coc-yaml",
             \ "coc-emmet",
             \ "coc-eslint",
+            \ "coc-prettier",
             \ "coc-json",
             \ "coc-yaml",
             \ ]

@@ -39,13 +39,5 @@
         "key": "shift+alt+f8",
         "command": "-editor.action.marker.prev",
         "when": "editorFocus"
-    },
-    {
-        "key": "ctrl+shift+t",
-        "command": "workbench.action.terminal.new"
-    },
-    {
-        "key": "ctrl+shift+`",
-        "command": "-workbench.action.terminal.new"
     }
 ]

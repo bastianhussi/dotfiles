@@ -14,7 +14,6 @@
     "pom.xml",
     "build.gradle"
   ],
-  "coc.preferences.bracketEnterImprove": true,
   "suggest.completionItemKindLabels": {
     "keyword": "\uf1de",
     "variable": "\ue79b",
@@ -43,6 +42,7 @@
     "typeParameter": "\uf728",
     "default": "\uf29c"
   },
+  "coc.preferences.bracketEnterImprove": true,
   "snippets.extends": {
     "javascriptreact": ["javascript"],
     "typescriptreact": ["typescript"]
@@ -67,5 +67,6 @@
     "typescript": "typescriptreact"
   },
   "eslint.autoFixOnSave": true,
-  "eslint.format.enable": true
+  "eslint.format.enable": true,
+  "prettier.eslintIntegration": true
 }

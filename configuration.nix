@@ -10,7 +10,7 @@
 
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
-    initrd.kernelModules = [ "amdgpu" ];
+    initrd.kernelModules = [ "amdgpu" "kvm-amd" ];
     loader = {
       efi = {
         efiSysMountPoint = "/boot";
@@ -114,8 +114,8 @@
     ];
     fontsconfig = {
       defaultFonts = {
-        emoji = "Noto Color Emoji";
-        monospace = ["Fira Code" "JetBrains Mono" "emoji"]
+        emoji = ["Noto Color Emoji"];
+        monospace = ["Fira Code" "JetBrains Mono" "emoji"];
         sansSerif = ["Noto Sans" "DejaVu Sans" "Liberation Sans" "emoji"];
         serif = ["Noto Serif" "DejaVu Serif" "Liberation Serif" "emoji"];
       };
@@ -123,7 +123,7 @@
   };
 
   programs = {
-    fish = {
+    zsh = {
       enable = true;
     };
     steam.enable = true;
@@ -136,11 +136,11 @@
   };
 
   environment.systemPackages = with pkgs; [
-    tree wget git gnupg curl firefox unzip
+    fzf tree wget git gnupg curl firefox unzip bat
     go openjdk nodejs watchman rustup
     rust-analyzer gopls go-tools
     exercism
-    alacritty
+    alacritty kitty
     android-studio jetbrains.idea-community jetbrains.pycharm-community
     vscodium
     vivaldi vivaldi-widevine vivaldi-ffmpeg-codecs
@@ -151,25 +151,11 @@
     gnome3.dconf-editor
     gnome3.gnome-tweaks
     krita drawio gimp inkscape
-    texlive.combined.scheme-medium
+    # texlive.combined.scheme-full
     insomnia dbeaver
     kubectl minikube
     wine-staging # vs. winePackages.staging?
-    steam xow fish emacs # Is the installation if these packages necessary?
   ];
-
-  environment.shellAliases = [
-    cp = "cp -i"
-    mv = "mv -i"
-    rm = "rm -I"
-    du = "du -sh"
-    free = "free -h"
-
-    python = "python3"
-    py = "python"
-    venv = "python -m venv"
-    pdb = "python -m pdb"
-  ]
 
   environment.gnome3.excludePackages = with pkgs.gnome3; [
     gnome-weather
@@ -185,28 +171,21 @@
     # see: https://nixos.org/manual/nixos/unstable/index.html#sec-gpu-accel-vulkan
     VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/amd_icd64.json";
     GDK_SCALE = "2";
-    GDK_DPI_SCALE = "0.5";
+    GDK_DPI_SCALE = "1";
     XCURSOR_THEME = "Adwaita";
-    XCURSOR_SIZE = 48;
+    XCURSOR_SIZE = "48";
   };
 
   virtualisation = {
-    virtualbox = {
-      enable = true;
-      host = {
-        enable = true;
-        enableExtensionPack = true; # Default
-        enableHardening = true;
-      };
-      guest.enable = false; # Default
-    };
+    # TODO: use kvm2
+    libvirtd.enable = true;
     podman = {
       enable = true;
       dockerCompat = true;
       extraPackages = with pkgs; [
         podman-compose buildah kompose
       ];
-    }
+    };
   };
 
   documentation = {
@@ -241,7 +220,7 @@
       enable = true;
       drivers = with pkgs; [
         gutenprint gutenprintBin
-        # hplip hplipWithPlugin # HP
+        hplip hplipWithPlugin # HP
         brlaser brgenml1lpr brgenml1cupswrapper # Brother
       ];
     };
@@ -272,8 +251,8 @@
       isNormalUser = true;
       description = "Bastian Hussi";
       group = "users";
-      extraGroups = ["wheel" "networkmanager" "audio" "vboxusers" "adbusers"];
-      shell = pkgs.fish;
+      extraGroups = ["wheel" "networkmanager" "audio" "libvirt" "adbusers"];
+      shell = pkgs.zsh;
       initialHashedPassword = "";
     };
   };
@@ -283,7 +262,7 @@
   system = {
     autoUpgrade = {
       enable = true;
-      channel = "https://nixos.org/channels/unstable"
+      channel = "https://nixos.org/channels/unstable";
     };
     system.stateVersion = "20.09";
   };

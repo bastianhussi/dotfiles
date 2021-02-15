@@ -1,5 +1,5 @@
 {
-  "workbench.colorTheme": "onehalf-light",
+  "workbench.colorTheme": "Dracula",
   "keyboard.dispatch": "keyCode",
   "window.zoomLevel": 0,
   "editor.fontSize": 20,
@@ -18,58 +18,6 @@
   "vim.useCtrlKeys": true,
   "vim.surround": true,
   "vim.sneak": true,
-  "vim.normalModeKeyBindingsNonRecursive": [
-    {
-      "before": ["<leader>", "f"],
-      "after": [],
-      "commands": [{ "command": "editor.action.formatDocument" }]
-    },
-    {
-      "before": ["<leader>", "d", "b"],
-      "after": [],
-      "commands": [{ "command": "editor.debug.action.toggleBreakpoint" }]
-    },
-    {
-      "before": ["<leader>", "d", "d"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.start" }]
-    },
-    {
-      "before": ["<leader>", "d", "c"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.continue" }]
-    },
-    {
-      "before": ["<leader>", "d", "o"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.stepOver" }]
-    },
-    {
-      "before": ["<leader>", "d", "i"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.stepInto" }]
-    },
-    {
-      "before": ["<leader>", "d", "O"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.stepOut" }]
-    },
-    {
-      "before": ["<leader>", "d", "p"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.pause" }]
-    },
-    {
-      "before": ["<leader>", "d", "r"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.restart" }]
-    },
-    {
-      "before": ["<leader>", "d", "q"],
-      "after": [],
-      "commands": [{ "command": "workbench.action.debug.stop" }]
-    }
-  ],
   "vim.visualModeKeyBindingsNonRecursive": [
     {
       "before": [">"],
@@ -89,15 +37,12 @@
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": true,
-  "python.linting.flake8Path": "/usr/bin/flake8-3",
+  "python.linting.flake8Path": "/usr/bin/flake8",
   "python.linting.banditEnabled": true,
-  "python.linting.banditPath": "/usr/bin/bandit-3",
+  "python.linting.banditPath": "/usr/bin/bandit",
   "python.formatting.provider": "autopep8",
-  "python.formatting.autopep8Path": "/usr/bin/autopep8-3",
-  "python.sortImports.path": "/usr/bin/isort-3",
-  "go.useLanguageServer": true,
-  "remote.SSH.connectTimeout": 45,
-  "remote.SSH.useLocalServer": false,
+  "python.formatting.autopep8Path": "/usr/bin/autopep8",
+  "python.sortImports.path": "/usr/bin/isort",
   "[html]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
@@ -115,5 +60,5 @@
   },
   "[jsonc]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
 }
