@@ -2,6 +2,8 @@ export EDITOR="nvim"
 export VISUAL="emacsclient -nc"
 export BROWSER="firefox"
 
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+
 export NVIM_LOG_FILE=/tmp/nvim.log
 
 export GOPATH="$HOME/.local/share/go"
@@ -42,6 +44,7 @@ setopt COMPLETE_ALIASES
 
 # Make soure this gets sourced after loading compinit
 source <(kubectl completion zsh)
+source <(helm completion zsh)
 source <(minikube completion zsh)
 
 # Change into directory by typing its name

@@ -28,10 +28,12 @@
 
 (add-hook 'emacs-startup-hook
           (lambda ()
-            ;; FIXME: isn't there already a variable for the startup time?
+            (message "Emacs loaded in %.2f seconds 🚀" (string-to-number (emacs-init-time)))
             (setq gc-cons-threshold (* 10 1024 1024)
                   read-process-output-max (* 1024 1024)
-                  gc-cons-percentage 0.1)))
+                  gc-cons-percentage 0.1)
+            ;; Run a garbage collection when everything else is done
+            (garbage-collect)))
 
 
 ;; Install packages in ~/.local/share not ~/.config
@@ -42,9 +44,9 @@
 ;; Set the working directory to home regardless of where Emacs was started from
 (cd "~/")
 
+
 ;; Avoid outdated byte compiled
 (setq load-prefer-newer t)
-
 
 (with-eval-after-load 'gnutls
   (eval-when-compile
@@ -67,20 +69,28 @@
 
 (require 'use-package)
 
+;; Prevent the startup message about GNU Emacs and the GNU system
+;; SEE: https://lists.gnu.org/archive/html/bug-gnu-emacs/2012-12/msg00954.html
+(put 'inhibit-startup-echo-area-message 'saved-value t)
+(setq inhibit-startup-echo-area-message (user-login-name))
+
 (setq inhibit-startup-message t
       initial-scratch-message ""
       initial-major-mode 'org-mode
       frame-title-format "GNU Emacs")
 
-
 (set-language-environment "UTF-8")
 (set-default-coding-systems 'utf-8)
 (set-keyboard-coding-system 'iso-latin-1)
 
-;; No gtk Title bar
-(setq default-frame-alist '((undecorated . t)))
-(add-to-list 'default-frame-alist '(fullscreen . maximized))
-(add-to-list 'default-frame-alist `(alpha . (95 . 95)))
+;; Whether frames should be resized implicitly. Prevent Emacs from changing it's size during startup.
+(setq frame-inhibit-implied-resize t)
+(setq default-frame-alist '((undecorated . t) ;; No gtk Title bar
+                            (alpha . (95 . 95)) ;; Transparency
+                            (width . 120) ;; Width in columns
+                            (height . 36) ;; Height in columns
+                            (left-fringe . 20)
+                            (right-fringe . 0)))
 
 
 (setq use-default-font-for-symbols nil
@@ -106,7 +116,6 @@
     (add-hook 'server-after-make-frame-hook #'set-font-faces)
     (set-font-faces))
 
-
 ;; Toggle interface elements
 (tool-bar-mode -1)
 (tooltip-mode -1)
@@ -115,7 +124,7 @@
 (blink-cursor-mode -1)
 (column-number-mode 1)
 
-
+;; Setup the colorscheme and add a nice looking modeline
 (use-package doom-themes
   :ensure t
   :config
@@ -125,17 +134,31 @@
   :ensure t
   :commands doom-modeline-mode
   :custom
-  (doom-modeline-icon t) ;; The icon would not be active when using the daemon
+  (doom-modeline-buffer-file-name-style 'truncate-except-project)
+  ;; (doom-modeline-icon t)
   :custom-face
   (mode-line ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
-  :config
-  (setq doom-modeline-buffer-file-name-style
-        'truncate-except-project)
-  :hook (after-init . doom-modeline-mode))
+  :hook
+  (after-init . doom-modeline-mode))
+
+;; FIXME: refactor this. Are there other settings to make in the scope of this function?
+(defun new-frame-setup (&optional frame)
+  "lorem."
+  (if (display-graphic-p frame)
+      (setq doom-modeline-icon t)
+    (setq doom-modeline-icon nil)))
+
+;; Run for already-existing frames
+(mapc 'new-frame-setup (frame-list))
+;; Run when a new frame is created
+(add-hook 'after-make-frame-functions 'new-frame-setup)
+;; server-after-make-frame-hook
+
+;; (unless (daemonp) (add-hook 'after-init-hook 'doom-modeline-setup))
 
 
-
+;; FIXME: When is setq-default really necessary?
 (setq-default cursor-in-non-selected-windows nil ; Hide the cursor in inactive windows
               show-help-function nil ; Disable help text everywher
               fill-column 99
@@ -154,12 +177,13 @@
   (setq display-line-numbers-type 'relative))
 
 
+;; Highlight the current line.
 (use-package hl-line
   :commands hl-line-mode
   :hook
   ((text-mode prog-mode) . hl-line-mode))
 
-
+;; Display keywords like TODO, NOTE, FIXME in different colors.
 (use-package hl-todo
   :ensure t
   :commands hl-todo-mode
@@ -174,15 +198,15 @@
           ("DEPRECATED" font-lock-doc-face bold)))
   :hook (prog-mode . hl-todo-mode))
 
-
+;; Mouse settings
 (setq mouse-wheel-scroll-amount '(3 ((shift) . 1))
       mouse-wheel-progressive-speed nil
       mouse-wheel-follow-mouse t)
 
+;; Turn of the bell
 (setq ring-bell-function 'ignore)
 
-(set-fringe-mode '(20 . 0))
-
+;; Typing out yes / no is waaaaay to tedious
 (fset 'yes-or-no-p 'y-or-n-p)
 
 
@@ -193,9 +217,12 @@
 (global-auto-revert-mode 1)
 
 
+;; Do not litter the emacs-user-directory with backups and autosaved files
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory)
+      ;; NOTE: use /tmp instead?
       temporary-file-directory (expand-file-name "~/.cache/emacs/"))
 
+;; Directory will not be created automatically
 (make-directory temporary-file-directory t)
 (setq backup-by-copying t
       delete-old-versions t
@@ -214,6 +241,7 @@
 ;; Insert text into new buffers based on their major mode
 (auto-insert-mode -1)
 
+;; Automatically insert closing pairs like ", ), ], }
 (use-package elec-pair
   :commands electric-pair-mode
   :config
@@ -222,16 +250,18 @@
   (prog-mode . electric-pair-mode))
 
 
+;; Highlight matching parenthesis
 (use-package paren
   :commands show-paren-mode
   :config
-  (setq show-paren-delay 0
+  (setq show-paren-delay 0.25
         show-paren-when-point-inside-paren t
         show-paren-when-point-in-periphery t)
   :hook
   (prog-mode . show-paren-mode))
 
 
+;; Highlight some non printable characters like tabs and trailing spaces
 (use-package whitespace
   :commands whitespace-mode
   :config
@@ -247,6 +277,7 @@
   :hook ((prog-mode org-mode) . auto-fill-mode))
 
 
+;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
 (use-package tab-bar
   :config
   (setq tab-bar-close-button-show nil
@@ -256,6 +287,8 @@
         ;; Always add new tabs to the rightmost position
         tab-bar-new-tab-to 'rightmost))
 
+;; Emacs file manager
+;; TODO: setup keymaps
 (use-package dired
   :custom
   (dired-auto-revert-buffer t)
@@ -270,6 +303,7 @@
   :defer t)
 
 
+;; Vim within Emacs.
 (use-package evil
   :ensure t
   :init
@@ -286,18 +320,21 @@
   :config
   (evil-mode 1))
 
+;; Useful vim keybindings for popular modes in Emacs.
 (use-package evil-collection
   :ensure t
   :after evil
   :config
   (evil-collection-init))
 
+;; Tim Popes surround plugin for Emacs.
 (use-package evil-surround
   :ensure t
   :after evil
   :config
   (global-evil-surround-mode 1))
 
+;; Vim-Snipe plugin for Emacs.
 (use-package evil-snipe
   :ensure t
   :after evil
@@ -310,7 +347,15 @@
   (evil-snipe-mode 1)
   (evil-snipe-override-mode 1))
 
+;; Tim Popes commentary plugin for Emacs.
+;; TODO: use a hook to activate this mode only after prog-mode
+(use-package evil-commentary
+  :ensure t
+  :after evil
+  :config
+  (evil-commentary-mode 1))
 
+;; Convenient way to manage keybindings
 (use-package general
   :ensure t
   :config
@@ -321,14 +366,14 @@
     :prefix "SPC"
     :global-prefix "C-SPC"))
 
-
+;; Displays key bindings following the currently entered incomplete command in a popup.
 (use-package which-key
   :ensure t
   :config
   (setq which-key-idle-delay 0.75)
   (which-key-mode 1))
 
-
+;; Ivy is a generic completion mechanism for Emacs.
 (use-package ivy
   :ensure t
   :hook (after-init . ivy-mode)
@@ -366,9 +411,13 @@
     "fb" 'counsel-switch-buffer
     "fj" 'counsel-file-jump
     "fl" 'counsel-locate
-    "fr" 'counsel-recentf))
+    "fr" 'counsel-recentf)
+  ;; Enabling counsel-mode remaps built-in Emacs functions that have counsel replacements
+  :config
+  (counsel-mode 1))
 
 
+;; A Git Porcelain inside Emacs.
 (use-package magit
   :ensure t
   :custom
@@ -390,9 +439,17 @@
     "gr"  'magit-rebase))
 
 
+;; A major mode for convenient plain text markup — and much more.
 (use-package org
   :ensure t
-  :defer t)
+  ;; :defer t
+  :general
+  ;; FIXME: doesn't work like this
+  ;; (leader-key org-mode-map
+  ;;   "o"   '(:ignore t :which-key "Org")
+  ;;   "os"   '(:ignore t :which-key "Show")
+  ;;   "osa" 'org-show-all))
+  )
 
 
 (use-package projectile
@@ -431,14 +488,15 @@
   (company-dabbrev-downcase nil)
   (company-dabbrev-ignore-case nil)
   (company-dabbrev-other-buffers nil)
+  (company-global-modes '(not help-mode message-mode))
   (company-idle-delay 0)
   (company-minimum-prefix-length 1)
   (company-require-match nil)
-  (company-tooltip-width-grow-only t)
+  (company-selection-wrap-around t)
   (company-tooltip-align-annotations t)
   (company-tooltip-flip-when-above t)
-  (company-selection-wrap-around t))
-
+  (company-tooltip-offset-display nil)
+  (company-tooltip-width-grow-only t))
 
 (use-package flyspell
   :commands (flyspell-mode flyspell-prog-mode)
@@ -486,8 +544,9 @@
   (leader-key "c"
     '(:keymap lsp-command-map :which-key "Code"))
   (general-define-key
-   :keymaps 'lsp-mode-map
    :states 'normal
+   :keymaps 'lsp-mode-map
+   "K" 'lsp-describe-thing-at-point
    "gi" 'lsp-goto-implementation
    "gr" 'lsp-find-references
    "gd" 'lsp-find-definition
@@ -643,16 +702,21 @@
   "qw" '(delete-window :which-key "Window"))
 
 
-;; Simulate vim-commentary
-(general-nmap
-  "gc" 'comment-line)
-(general-vmap
-  "gc" 'comment-or-uncomment-region)
-
-
 (defalias 'eb 'eval-buffer)
 (defalias 'kb 'kill-buffer)
 (defalias 'dr 'desktop-remove)
 (defalias 'cp 'check-parens)
 (defalias 'lt 'load-theme)
 (defalias 'plp 'package-list-packages)
+
+
+(defun move-frame-to-center ()
+  "Center the Emacs frame on the desktop"
+
+  (set-frame-position (selected-frame)
+  (/ (- (x-display-pixel-width) (frame-pixel-width)) 2)
+  (/ (- (x-display-pixel-height) (frame-pixel-height)) 2)))
+
+;; Center the emacs frame on the desktop
+;; FIXME: extremely hacky approach: Is the hook that can be used for this
+(run-with-timer 1.1 nil 'move-frame-to-center)
