@@ -1,18 +1,3 @@
-export EDITOR="nvim"
-export VISUAL="emacsclient -nc"
-export BROWSER="firefox"
-
-export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
-
-export NVIM_LOG_FILE=/tmp/nvim.log
-
-export GOPATH="$HOME/.local/share/go"
-export GOBIN="$GOPATH/bin"
-export PATH="$GOBIN:$PATH"
-
-export DENO_INSTALL="/home/bastian/.local/share/deno"
-export PATH="$DENO_INSTALL/bin:$PATH"
-
 # Aliases
 alias ls='ls --color=auto'
 alias ll='ls -lah --color=auto'

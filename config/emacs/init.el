@@ -2,7 +2,6 @@
 ;; TODO: Create a unified setting for character limit
 ;; TODO: use prescient for ivy and company
 ;; TODO: check on ispell
-;; TODO: Configure eshell (and get rid of vterm if it works well enough)
 ;; TODO: Make better lsp-ui
 ;; TODO: dap-mode
 ;; TODO: improve org-mode keybindings
@@ -19,7 +18,8 @@
 ;; FIXME: missing output on docker build
 ;; FIXME: neofetch is displayed wrong
 ;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
-;; TODO: configure Eshell
+;; TODO: Configure Eshell
+;; REVIEW: replace lsp-mode with eglot?
 
 
 ;; NOTE: do not use 'most-positive-fixnum', this will cause Emacs to freeze on the first start
@@ -87,8 +87,7 @@
 (setq frame-inhibit-implied-resize t)
 (setq default-frame-alist '((undecorated . t) ;; No gtk Title bar
                             (alpha . (95 . 95)) ;; Transparency
-                            (width . 120) ;; Width in columns
-                            (height . 36) ;; Height in columns
+                            (fullscreen . maximized) ;; Width in columns
                             (left-fringe . 20)
                             (right-fringe . 0)))
 
@@ -295,6 +294,32 @@
   (dired-dwim-target t)
   (dired-hide-details-hide-symlink-targets nil)
   (dired-recursive-copies 'always))
+
+;; (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+;; Should be in there by default. But to be sure anyway:
+;; (add-to-list 'comint-output-filter-functions 'ansi-color-process-output)
+
+(use-package eshell
+  :hook
+  (eshell-preoutput-filter-functions ansi-color-filter-apply))
+
+(use-package vterm
+  :ensure t
+  :bind
+  ([remap term] . vterm)
+  :custom
+  (vterm-kill-buffer-on-exit t)
+  (vterm-max-scrollback 5000))
+
+;; TODO: Add shortcuts for image-increate-size and image-decrease-size and also always select image
+;; on entering this mode
+(use-package image-mode
+  :config
+  (setq image-auto-resize-on-window-resize t)
+  :bind
+  (:map image-mode-map
+        ("+" . image-increase-size)
+        ("-" . image-decrease-size)))
 
 
 ;; TODO: remove when Emacs v28 gets out.
@@ -709,14 +734,3 @@
 (defalias 'lt 'load-theme)
 (defalias 'plp 'package-list-packages)
 
-
-(defun move-frame-to-center ()
-  "Center the Emacs frame on the desktop"
-
-  (set-frame-position (selected-frame)
-  (/ (- (x-display-pixel-width) (frame-pixel-width)) 2)
-  (/ (- (x-display-pixel-height) (frame-pixel-height)) 2)))
-
-;; Center the emacs frame on the desktop
-;; FIXME: extremely hacky approach: Is the hook that can be used for this
-(run-with-timer 1.1 nil 'move-frame-to-center)
