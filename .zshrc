@@ -3,9 +3,8 @@ alias ls='ls --color=auto'
 alias ll='ls -lah --color=auto'
 alias la='ls -Alah --color=auto'
 alias grep='grep --color=auto'
-alias ec="$EDITOR $HOME/.zshrc" # edit .zshrc
-alias sc="source $HOME/.zshrc"  # reload zsh configuration
-
+alias ec="$EDITOR ${ZDOTDIR:-$HOME}/.zshrc" # edit .zshrc
+alias sc="source ${ZDOTDIR:-$HOME}/.zshrc"  # reload zsh configuration 
 alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -I'
@@ -13,12 +12,11 @@ alias rm='rm -I'
 alias du='du -sh'
 alias free='free -h'
 
-alias sudo="doas"
+# alias sudo="doas"
 # alias docker="podman"
 
 alias vi="nvim"
 alias vim="nvim"
-alias bat="batcat"
 
 autoload -Uz compinit
 compinit
@@ -26,16 +24,41 @@ zstyle ':completion:*' menu select
 zstyle ':completion::complete:*' gain-privileges 1
 setopt COMPLETE_ALIASES
 
-
 # Make soure this gets sourced after loading compinit
-source <(kubectl completion zsh)
-source <(helm completion zsh)
-source <(minikube completion zsh)
+kubectl () {
+    command kubectl $*
+    if [[ -z $KUBECTL_COMPLETE ]]
+    then
+        source <(command kubectl completion zsh)
+        KUBECTL_COMPLETE=1
+    fi
+}
+
+helm () {
+    command helm $*
+    if [[ -z $HELM_COMPLETE ]]
+    then
+        source <(command helm completion zsh)
+        HELM_COMPLETE=1
+    fi
+}
+
+minikube () {
+    command minikube $*
+    if [[ -z $MINIKUBE_COMPLETE ]]
+    then
+        source <(command minikube completion zsh)
+        MINIKUBE_COMPLETE=1
+    fi
+}
 
 # Change into directory by typing its name
-setopt autocd
-
-setopt histignorealldups sharehistory
+setopt AUTO_CD
+setopt NO_CASE_GLOB
+setopt GLOB_COMPLETE
+setopt SHARE_HISTORY
+setopt INC_APPEND_HISTORY
+setopt HIST_IGNORE_DUPS
 
 # Keep 5000 lines of history within the shell and save it to ~/.zsh_history:
 HISTSIZE=5000
@@ -94,17 +117,26 @@ zle -N down-line-or-beginning-search
 [[ -n "${key[Up]}"   ]] && bindkey -- "${key[Up]}"   up-line-or-beginning-search
 [[ -n "${key[Down]}" ]] && bindkey -- "${key[Down]}" down-line-or-beginning-search
 
+declare -A ZINIT
+ZINIT[HOME_DIR]=$XDG_DATA_HOME/zinit
+ZINIT[BIN_DIR]=$ZINIT[HOME_DIR]/bin
+ZINIT[PLUGINS_DIR]=$ZINIT[HOME_DIR]/plugins
+ZINIT[COMPLETIONS_DIR]=$ZINIT[HOME_DIR]/completions
+ZINIT[SNIPPETS_DIR]=$ZINIT[HOME_DIR]/snippets
+ZINIT[ZCOMPDUMP_PATH]=$XDG_CACHE_HOME/zcompdump/zcompdump-zinit
+ZINIT[MUTE_WARNINGS]=0
+ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
 
 ### Added by Zinit's installer
-if [[ ! -f $HOME/.zinit/bin/zinit.zsh ]]; then
+if [[ ! -f $ZINIT[HOME_DIR]/bin/zinit.zsh ]]; then
     print -P "%F{33}▓▒░ %F{220}Installing %F{33}DHARMA%F{220} Initiative Plugin Manager (%F{33}zdharma/zinit%F{220})…%f"
-    command mkdir -p "$HOME/.zinit" && command chmod g-rwX "$HOME/.zinit"
-    command git clone https://github.com/zdharma/zinit "$HOME/.zinit/bin" && \
+    command mkdir -p "$ZINIT[HOME_DIR]" && command chmod g-rwX "$ZINIT[HOME_DIR]"
+    command git clone https://github.com/zdharma/zinit "$ZINIT[HOME_DIR]/bin" && \
         print -P "%F{33}▓▒░ %F{34}Installation successful.%f%b" || \
         print -P "%F{160}▓▒░ The clone has failed.%f%b"
 fi
 
-source "$HOME/.zinit/bin/zinit.zsh"
+source "$ZINIT[HOME_DIR]/bin/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 
@@ -117,8 +149,7 @@ zinit light-mode for \
     zinit-zsh/z-a-bin-gem-node
 
 ### End of Zinit's installer chunk
-#
-#
+
 zinit light zsh-users/zsh-autosuggestions
 zinit light zsh-users/zsh-completions
 zinit light zsh-users/zsh-syntax-highlighting
@@ -137,6 +168,3 @@ autoload -U colors && colors
 
 # Load theme from OMZ
 zinit snippet OMZT::robbyrussell
-
-# Load normal GitHub plugin with theme depending on OMZ Git library
-# zinit light NicoSantangelo/Alpharized
