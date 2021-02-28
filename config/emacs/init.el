@@ -31,7 +31,6 @@
 ;; TODO: spelling + grammer
 ;; TODO: Fix weird escape characters when building docker images
 ;; TODO: tsx, jsx, vue-files
-;; TODO: refactor (reorder and group blocks, set a order for :hooks, :config, :custom, ...)
 ;; TODO: use org-file for configuration
 ;; FIXME: missing output on docker build
 ;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
@@ -39,38 +38,38 @@
 ;; REVIEW: reduce startup-time even more (better than 0.7-0.8, currently 1.3)?
 
 
-;; NOTE: do not use 'most-positive-fixnum', this will cause Emacs to freeze on the first start
-(setq gc-cons-threshold (* 100 1024 1024)
-      gc-cons-percentage 0.6)
-
-(add-hook 'emacs-startup-hook
+(add-hook 'after-init-hook
           (lambda ()
-            ;; Set the working directory to home regardless of where Emacs was started from
-            (message "Emacs loaded in %.2f seconds 🚀" (string-to-number (emacs-init-time)))
+            ;; Always set the home directory to the current buffers default directory.
+            ;; NOTE: invoking this earlier doesn't work
             (cd "~/")
-            (setq gc-cons-threshold (* 10 1024 1024)
-                  read-process-output-max (* 1024 1024)
-                  gc-cons-percentage 0.1)
-            ;; Run a garbage collection when everything else is done
-            (garbage-collect)
+            (global-auto-revert-mode 1)
             ;; Sync mail in background
-            (mu4e t)))
+            (mu4e t)
+            ;; Start server if its not already running
+            (require 'server)
+            (unless (server-running-p)
+              (server-start))))
+
+
+(setq user-full-name "Bastian Hussi")
+
+(setq default-directory user-emacs-directory
+      user-emacs-directory (expand-file-name "emacs" (or (getenv "XDG_DATA_HOME") "~/.local/share"))
+      ;; Save temporary file under /tmp/emacs<uid>
+      temporary-file-directory (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)
+      custom-file (expand-file-name "custom.el" user-emacs-directory))
+
 
 ;; The default directory should stay $XDG_CONFIG_HOME or ~/.config/emacs
 ;; Install packages in ~/.local/share not ~/.config
 ;; If the XDG_DATA_HOME variable is set use it. Otherwise fall back to ~/.local/share/
-(setq default-directory user-emacs-directory
-      user-emacs-directory (expand-file-name "emacs" (or (getenv "XDG_DATA_HOME") "~/.local/share"))
-      temporary-file-directory  (expand-file-name "emacs" (or (getenv "XDG_CACHE_HOME") "~/.cache"))
-      ;; NOTE: use /tmp instead?
-      custom-file (expand-file-name "custom.el" user-emacs-directory))
 
-(load custom-file t)
+(when (file-exists-p custom-file)
+  (load custom-file))
 ;; This directory will not be created automatically
 (make-directory temporary-file-directory t)
 
-;; Other configuration files (private stuff, etc...)
-(add-to-list 'load-path "lisp")
 
 ;; Setup GnuTLS for package downloads and sending mail with mu4e
 (with-eval-after-load 'gnutls
@@ -82,27 +81,23 @@
         gnutls-min-prime-bits 3072))
 
 
+(setq straight-fix-flycheck t)
 
-;; Avoid outdated byte compiled
-(setq load-prefer-newer t)
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 5))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
 
-(require 'package)
-(setq package-archives '(("elpa" . "https://elpa.gnu.org/packages/")
-                         ("melpa" . "https://melpa.org/packages/")
-                         ("org" . "https://orgmode.org/elpa/"))
-      ;; REVIEW: is this order useful? Is this necessary at all?
-      package-archive-priorities '(("elpa" . 5)
-                                   ("melpa" . 10)
-                                   ("org" . 15)))
-
-;; Setup use-package
-(package-initialize)
-(unless package-archive-contents
-  (package-refresh-contents))
-
-(unless (package-installed-p 'use-package)
-   (package-install 'use-package))
-(require 'use-package)
+;; Install and use use-package
+(straight-use-package 'use-package)
 
 
 ;; Prevent the startup message about GNU Emacs and the GNU system
@@ -110,62 +105,75 @@
 ;; Typing out yes / no is waaaaay to tedious
 (fset 'yes-or-no-p 'y-or-n-p)
 
+
 (setq inhibit-startup-message t
       initial-scratch-message ""
       initial-major-mode 'org-mode
       frame-title-format "GNU Emacs")
 
+(setq confirm-kill-emacs 'y-or-n-p)
+(setq use-dialog-box nil) ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+
 (set-language-environment "UTF-8")
 (set-default-coding-systems 'utf-8)
 (set-keyboard-coding-system 'iso-latin-1)
 
-;; Whether frames should be resized implicitly. Prevent Emacs from changing it's size during startup.
-(setq frame-inhibit-implied-resize t
-      default-frame-alist '((undecorated . t) ;; No gtk Title bar
-                            (alpha . (95 . 95)) ;; Transparency
-                            (fullscreen . maximized) ;; Width in columns
-                            (left-fringe . 20)
-                            (right-fringe . 0)))
+
+;; FIXME: Why doesn't this work in the eary-init-file?
+(set-scroll-bar-mode nil)
 
 (defun set-font-faces ()
   "Setting up fonts + emoji support."
-
-  (setq use-default-font-for-symbols nil
-        inhibit-compacting-font-caches t)
-
-  ;; Default font size
   (defvar font-size 160)
-
   (set-face-attribute 'default nil :font "Fira Code Retina" :height font-size)
   (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height font-size)
   (set-face-attribute 'variable-pitch nil :font "Cantarell" :height font-size :weight 'regular)
-
+  ;; By default, Emacs will try to use the default face’s font for
+  ;; displaying symbol and punctuation characters, disregarding the
+  ;; fontsets, if the default font can display the character. Prevent this behavior:
+  (setq use-default-font-for-symbols nil)
   ;; Colorful emojis
   (set-fontset-font t 'symbol "Noto Color Emoji")
   (set-fontset-font t 'symbol "Symbola" nil 'append))
-
 
 ;; Make sure the fonts are set: with daemon and without
 (if (daemonp)
     (add-hook 'server-after-make-frame-hook #'set-font-faces)
     (set-font-faces))
 
+(use-package ligature
+  :straight `(ligature :type git :host github :repo "mickeynp/ligature.el")
+  :config
+  ;; Enable the "www" ligature in every possible major mode
+  (ligature-set-ligatures 't '("www"))
+  ;; Enable traditional ligature support in eww-mode, if the
+  ;; `variable-pitch' face supports it
+  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
+  ;; Enable all Cascadia Code ligatures in programming modes
+  (ligature-set-ligatures
+   'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+                ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+                "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+                "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+                "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+                "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+                "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+                "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+                ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+                "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+                "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+                "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+                "\\\\" "://"))
+  ;; Enables ligature checks globally in all buffers. You can also do it
+  ;; per mode with `ligature-mode'.
+  (global-ligature-mode t))
 
-;; Toggle interface elements
-(tool-bar-mode -1)
-(tooltip-mode -1)
-(scroll-bar-mode -1)
-(menu-bar-mode -1)
-(blink-cursor-mode -1)
-(column-number-mode 1)
-
-;; Insert text into new buffers based on their major mode
-(global-auto-revert-mode 1)
 
 (setq-default cursor-in-non-selected-windows nil ; Hide the cursor in inactive windows
               fill-column 99
               tab-width 4
               indent-tabs-mode nil)
+
 
 ;; Mouse settings
 (setq mouse-wheel-scroll-amount '(3 ((shift) . 1))
@@ -179,14 +187,14 @@
 
 ;; Setup the colorscheme and add a nice looking modeline
 (use-package doom-themes
-  :ensure t
+  :straight t
   :config
   (load-theme 'doom-dracula t)
-  (doom-themes-visual-bell-config)
-  (doom-themes-org-config))
+  (doom-themes-org-config)
+  (doom-themes-visual-bell-config))
 
 (use-package doom-modeline
-  :ensure t
+  :straight t
   :commands doom-modeline-mode
   :custom
   (doom-modeline-height 0)
@@ -201,14 +209,15 @@
                                (setq doom-modeline-icon (display-graphic-p))))
   (after-init . doom-modeline-mode))
 
+
 ;; NOTE: fixed bug. Solution do not use global-display-line-numbers-mode at all.
 ;; Do not even set it -1, just ignore it.
 (use-package display-line-numbers
   :commands display-line-numbers-mode
-  :hook
-  ((text-mode prog-mode) . display-line-numbers-mode)
   :custom
-  (display-line-numbers-type 'relative))
+  (display-line-numbers-type 'relative)
+  :hook
+  ((text-mode prog-mode) . display-line-numbers-mode))
 
 ;; Highlight the current line.
 (use-package hl-line
@@ -218,7 +227,7 @@
 
 ;; Display keywords like TODO, NOTE, FIXME in different colors.
 (use-package hl-todo
-  :ensure t
+  :straight t
   :commands hl-todo-mode
   :custom
   (hl-todo-highlight-punctuation ":")
@@ -240,30 +249,40 @@
   (tab-bar-new-tab-to 'rightmost)) ;; Always add new tabs to the rightmost position
 
 
-(use-package epa-file
-  :custom
-  (epa-file-cache-passphrase-for-symmetric-encryption t)
-  (epa-file-select-keys nil))
+(setq epa-file-cache-passphrase-for-symmetric-encryption t
+      epa-file-select-keys nil)
 
 ;; Prefer the encrypted authinfo-file
-(setq auth-sources
-      '((:source "~/.authinfo.gpg")
-        (:source "~/.authinfo")))
+(setq auth-sources '((:source "~/.authinfo.gpg")
+                     (:source "~/.authinfo")))
 
 
-(use-package files
+;; Sadly this is the only way Emacs will respect variables set by zsh.
+;; FIXME: Is there really no other option?
+(use-package exec-path-from-shell
+  :straight t
   :custom
-  (large-file-warning-threshold nil)
-  (find-file-visit-truename t)
-  (backup-by-copying t)
-  (delete-old-versions t)
-  (kept-new-versions 6)
-  (kept-old-versions 2)
-  (version-control t)
-  (backup-directory-alist
-   `(("." . ,temporary-file-directory)))
-  (auto-save-file-name-transforms
-   `((".*" ,temporary-file-directory t))))
+  (exec-path-from-shell-arguments '("-l")) ;; Speed things up a bit
+  :config
+  (if (daemonp)
+      (add-hook 'server-after-make-frame-hook #'exec-path-from-shell-initialize)
+    (exec-path-from-shell-initialize)))
+
+
+(setq large-file-warning-threshold nil
+      find-file-visit-truename t
+      backup-by-copying t
+      delete-old-versions t
+      kept-new-versions 6
+      kept-old-versions 2
+      version-control t
+      backup-directory-alist
+      `((".*" . ,temporary-file-directory))
+      auto-save-file-name-transforms
+      `((".*" ,temporary-file-directory t)))
+
+(setq auto-save-list-file-prefix
+      temporary-file-directory)
 
 
 (setq vc-follow-symlinks t
@@ -280,7 +299,6 @@
   :hook
   (prog-mode . electric-pair-mode))
 
-
 ;; Highlight matching parenthesis
 (use-package paren
   :commands show-paren-mode
@@ -291,7 +309,6 @@
   :hook
   (prog-mode . show-paren-mode))
 
-
 ;; Highlight some non printable characters like tabs and trailing spaces
 (use-package whitespace
   :commands whitespace-mode
@@ -301,52 +318,49 @@
   :hook
   ((text-mode prog-mode) . whitespace-mode))
 
-
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
   :hook ((text-mode prog-mode) . auto-fill-mode))
 
-;; TODO: remove when Emacs v28 gets out.
-(use-package undo-fu
-  :ensure t
-  :defer t)
-
 
 ;; Vim within Emacs.
 (use-package evil
-  :ensure t
-  :init
-  (setq evil-want-keybinding nil
-        evil-want-integration t
-        evil-want-fine-undo nil
-        evil-want-C-i-jump t
-        ;; TODO: Use undo-redo when Emacs v28 gets released.
-        evil-undo-system 'undo-fu
-        evil-move-beyond-eol t
-        ;; You can't escape vim
-        evil-toggle-key "")
-  (setq-default evil-shift-width tab-width)
+  :straight t
+  :custom
+  (evil-want-keybinding nil)
+  (evil-want-integration t)
+  (evil-want-fine-undo nil)
+  (evil-want-C-i-jump t)
+  ;; TODO: Use undo-redo when Emacs v28 gets released.
+  (evil-undo-system 'undo-fu)
+  (evil-move-beyond-eol t)
+  ;; You can't escape vim
+  (evil-toggle-key "")
   :config
+  ;; TODO: remove when Emacs v28 gets out.
+  (use-package undo-fu :straight t)
+  (setq-default evil-shift-width tab-width)
   (evil-mode 1))
+
 
 ;; Useful vim keybindings for popular modes in Emacs.
 (use-package evil-collection
-  :ensure t
+  :straight t
   :after evil
   :config
   (evil-collection-init))
 
 ;; Tim Popes surround plugin for Emacs.
 (use-package evil-surround
-  :ensure t
+  :straight t
   :after evil
   :config
   (global-evil-surround-mode 1))
 
 ;; Vim-Snipe plugin for Emacs.
 (use-package evil-snipe
-  :ensure t
+  :straight t
   :after evil
   :custom
   (evil-snipe-scope 'whole-visible)
@@ -358,11 +372,10 @@
   (evil-snipe-mode 1)
   (evil-snipe-override-mode 1))
 
-;; TODO: create own lightweight evil-commentary
 
 ;; Convenient way to manage keybindings
 (use-package general
-  :ensure t
+  :straight t
   :config
   (general-evil-setup t)
   (general-setq evil-search-module 'evil-search)
@@ -373,25 +386,27 @@
 
 ;; Displays key bindings following the currently entered incomplete command in a popup.
 (use-package which-key
-  :ensure t
+  :straight t
   :custom
   (which-key-idle-delay 0.75)
   :config
   (which-key-mode 1))
 
+
 ;; Ivy is a generic completion mechanism for Emacs.
 (use-package ivy
-  :ensure t
-  :hook (after-init . ivy-mode)
+  :straight t
+  :commands ivy-mode
   :custom
   (ivy-wrap t)
   ;; Add bookmarks and recentf to buffer list
   (ivy-use-virtual-buffers t)
   (ivy-height 12)
   (ivy-auto-select-single-candidate t)
+  (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
   ;; Do not close the minibuffer with delete
   (ivy-on-del-error-function nil)
-  ;; Always use fuzzy search except swiper
+  ;; FIXME: improve this settings (fuzzy doesn't work for files, recentf, ...)
   (ivy-re-builders-alist
    '((read-file-name-internal . ivy--regex-fuzzy)
      (t . ivy--regex-plus)))
@@ -399,12 +414,14 @@
   (:map ivy-minibuffer-map
         ("RET" . ivy-done)
         ("TAB" . ivy-next-line)
-        ("<backtab>" . ivy-previous-line)))
+        ("C-V" . yank) ;; insert with Ctrl+Shift+v just like in a terminal
+        ("<backtab>" . ivy-previous-line))
+  :hook (after-init . ivy-mode))
 
 ;; TODO: https://github.com/seagle0128/.emacs.d/blob/master/lisp/init-ivy.el
 (use-package counsel
-  :ensure t
-  :after ivy
+  :straight t
+  :commands counsel-mode
   :bind
   ;; Replace evil search with Swiper
   ([remap evil-ex-search-forward] . swiper)
@@ -419,8 +436,43 @@
     "fl" 'counsel-locate
     "fr" 'counsel-recentf)
   ;; Enabling counsel-mode remaps built-in Emacs functions that have counsel replacements
+  :hook
+  (ivy-mode . counsel-mode)) ;; NOTE: Only calling this in :config doesn't work
+
+;; TODO: configure
+(use-package prescient
+  :straight t
+  :commands prescient-persist-mode
+  :custom
+  (prescient-history-length 3)
+  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
+  (prescient-filter-method '(literal regexp fuzzy)))
+
+(use-package ivy-prescient
+  :straight t
+  :after counsel
+  :custom
+  (ivy-prescient-enable-filtering nil) ;; Let ivy handle the filtering
+  (ivy-prescient-retain-classic-highlighting t) ;; Keep classic highlighting
   :config
-  (counsel-mode 1))
+  (ivy-prescient-mode 1)
+  (prescient-persist-mode 1)) ;; Enable saving the prescient results when loading this mode
+
+(use-package company-prescient
+  :straight t
+  :after company
+  :config
+  (company-prescient-mode 1)
+  (prescient-persist-mode 1))
+
+
+(use-package recentf
+  :commands recentf-mode
+  :custom
+  (recentf-max-menu-items 25)
+  (recentf-max-saved-items 25)
+  :config
+  (run-at-time nil (* 15 60) 'recentf-save-list)) ;; Save every 15 minutes
 
 
 ;; Emacs file manager
@@ -430,93 +482,70 @@
   :custom
   (dired-auto-revert-buffer t) ;; NOTE: describe variable
   (dired-dwim-target t) ;; NOTE: describe variable
+  (dired-listing-switches "-Ahlv --group-directories-first") ;; Change the arguments passed to ls
   (dired-hide-details-hide-symlink-targets nil) ;; ...
-  (dired-recursive-copies 'always))
-
-;; TODO: Add shortcuts for image-increate-size and image-decrease-size and also always select image
-;; on entering this mode
-;; REVIEW: is this config necessary?
-(use-package image-mode
-  :commands image-mode
-  :custom
-  (image-auto-resize-on-window-resize t)
-  :bind
-  (:map image-mode-map
-        ("+" . image-increase-size)
-        ("-" . image-decrease-size)))
-
-;; DEPRECATED: Last update on 12.5.20
-(use-package pdf-tools
-  :ensure t
-  :mode
-  ("\\.pdf\\'" . pdf-view-mode)
+  (dired-recursive-copies 'always)
   :config
-  (pdf-loader-install)
+  (evil-collection-define-key 'normal 'dired-mode-map
+    "h" 'dired-up-directory ;; go up a directory
+    "l" 'dired-find-file)) ;; go into the selected directory
+
+
+(use-package tex-site
+  :mode ("\\.tex\\'" . LaTeX-mode))
+
+(use-package latex
+  :commands (LaTeX-mode)
+  :config
+  (flyspell-mode 1)
+  (LaTeX-math-mode 1)
+  (reftex-mode 1))
+
+(use-package tex
+  :after latex
   :custom
-  (pdf-view-display-size 'fit-page))
+  (TeX-PDF-mode t)
+  (TeX-auto-save t)
+  (TeX-parse-self t)
+  (TeX-view-program-selection
+   '((output-pdf "xdg-open")
+     (output-html "xdg-open")))
+  :config
+  (setq-default TeX-master nil))
 
-
-;; ein for interacting with notebooks
-;; (use-package ein
-;;   :ensure t
-;;   :defer t)
-
-;; (use-package tex
-;;   :defer t
-;;   :ensure auctex
-;;   :config
-;;   (TeX-source-correlate-mode)
-;;   :custom
-;;   (TeX-command-extra-options "--shell-escape")
-;;   (TeX-source-correlate-start-server t))
-;; SEE: https://www.gnu.org/software/auctex/manual/auctex.html
-;; (use-package latex
-;;   :mode ("\\.tex\\'" . latex-mode)
-;;   :custom
-;;   (LaTeX-section-hook
-;;    '(LaTeX-section-heading
-;; 	 LaTeX-section-title
-;; 	 LaTeX-section-toc
-;; 	 LaTeX-section-section
-;; 	 LaTeX-section-label)))
-
-;; (use-package tex
-;;   :after latex
-;;   :custom
-;;   (TeX-auto-save t)
-;;   (TeX-parse-self t)
-;;   (TeX-view-program-selection '((output-pdf "PDF Tools")))
-;;   :config
-;;   (setq-default TeX-master nil))
+(use-package reftex
+  :after latex
+  :custom
+  (reftex-plug-into-AUCTeX t)
+  (reftex-use-external-file-finders t)
+  :config
+  (turn-on-reftex))
 
 ;; https://joostkremers.github.io/ebib/ebib-manual.html
-;; (use-package ebib
-;;   :ensure t
-;;   :defer t)
+(use-package ebib
+  :straight t
+  :after latex
+  :custom
+  (ebib-bibtex-dialect 'BibTeX))
 
 
 ;; A major mode for convenient plain text markup — and much more.
 ;; TODO: https://www.youtube.com/watch?v=PNE-mgkZ6HM
 (use-package org
-  :ensure t
-  :commands org-mode
+  :straight t
+  :commands (org-mode org-agenda)
   ;; TODO: implement these on my own https://github.com/edwtjo/evil-org-mode
   :custom
-  (org-directory "~/Nextcloud/Notes")
-  (org-agenda-files '("~/Nextcloud/Notes/" "~/Dokumente/"))
+  (org-directory "~/Nextcloud/Notes/")
+  (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
+  (org-log-done 'time) ;; Add timestamp whenever task is finished
+  (org-log-into-drawer t)
+  (org-agenda-start-with-log-mode t)
   :general
-  (leader-key
-    "o"   '(:ignore t :which-key "Org")
-    "oa" 'org-agenda)
   ;; Only show these bindings when in org-mode
   (leader-key
-    :states 'normal
-    :keymaps 'org-mode-map
-    "os"   '(:ignore t :which-key "Show")
-    "osa" 'org-show-all
-    "ost" 'org-show-todo-tree
-    "osc" 'org-show-children
-    "oss" 'org-show-subtree))
+    "o"   '(:ignore t :which-key "Org")
+    "oa" 'org-agenda))
 
 
 ;; TODO: configure
@@ -524,7 +553,7 @@
   :commands eshell)
 
 (use-package vterm
-  :ensure t
+  :straight t
   :commands vterm
   :bind
   ([remap term] . vterm)
@@ -537,51 +566,12 @@
   (vterm-max-scrollback 5000))
 
 
-(use-package mu4e
-  :load-path "/usr/local/share/emacs/site-lisp/mu4e/"
-  :commands mu4e
-  :init
-  ;; use mu4e for Emails in Emacs
-  (setq mail-user-agent 'mu4e-user-agent)
-  :general
-  (leader-key
-    "m"   '(mu4e :which-key "Mail"))
-  :custom
-  ;; This is set to 't' to avoid mail syncing issues when using mbsync
-  (mu4e-change-filenames-when-moving t)
-  ;; Refresh mail using isync every 15 minutes
-  (mu4e-update-interval (* 15 60))
-  (mu4e-get-mail-command "mbsync -a")
-  (mu4e-compose-in-new-frame nil) ;; Default value
-  ;; don't save message to Sent Messages, IMAP takes care of this
-  (mu4e-sent-messages-behavior 'delete)
-  (mu4e-context-policy 'pick-first)
-  (mu4e-compose-context-policy 'always-ask)
-  ;; Format composed mails
-  (mu4e-compose-format-flowed t)
-  (mu4e-view-show-images nil);; Default value
-  (mu4e-confirm-quit t) ;; Default value
-  (mu4e-maildir "~/.mail")
-  (mu4e-bookmarks
-   '((:name "Unread messages" :query "flag:unread AND NOT flag:trashed" :key ?i)
-     (:name "Today's messages" :query "date:today..now" :key ?t)
-     (:name "Last 7 days" :query "date:7d..now" :hide-unread t :key ?w))))
-
-
-
-
-
-(use-package smtpmail
-  :after mu4e-context ;; FIXME: Find more efficient way
-  :custom
-  (message-send-mail-function 'smtpmail-send-it))
+;; NOTE: The entire mu4e configuration resides in the private configuration-file.
 
 
 ;; A Git Porcelain inside Emacs.
-;; FIXME: doesn't work right now (issue with 'with-editor')
 (use-package magit
-  :ensure t
-  :commands (magit-status magit-get-current-branch)
+  :straight t
   :general
   (leader-key
     "g"   '(:ignore t :which-key "Git")
@@ -600,37 +590,30 @@
 
 
 (use-package projectile
-  :ensure t
+  :straight t
   :general
   (leader-key "p"
     '(:prefix-map projectile-command-map :which-key "Project"))
   :custom
   (projectile-switch-project-action #'projectile-dired)
   (projectile-sort-order 'recently-active)
-  :config
-  (projectile-mode 1))
+  :hook
+  (after-init . projectile-mode))
 
 
 ;; REVIEW: Global really necessary?
 (use-package yasnippet
-  :ensure t
-  :diminish yas-minor-mode
+  :straight t
+  :commands yas-global-mode
   :hook (after-init . yas-global-mode))
 
 (use-package yasnippet-snippets
-  :ensure t
+  :straight t
   :after yasnippet)
 
-
 (use-package company
-  :ensure t
+  :straight t
   :commands company-mode
-  :hook ((text-mode prog-mode) . company-mode)
-  :bind
-  (:map company-active-map
-        ("RET" . company-complete-selection)
-        ("TAB" . company-select-next)
-        ("<backtab>" . company-select-previous))
   :custom
   ;; TODO: which backends to use?
   (company-backends '((company-capf :with company-yasnippet)
@@ -642,7 +625,17 @@
   (company-minimum-prefix-length 1)
   (company-require-match nil)
   (company-selection-wrap-around t)
-  (company-tooltip-width-grow-only t))
+  (company-tooltip-width-grow-only t)
+  :config
+  (setq tab-always-indent 'complete
+        completion-cycle-threshold 5)
+  (add-to-list 'completion-styles 'initials t)
+  :bind
+  (:map company-active-map
+        ("RET" . company-complete-selection)
+        ("TAB" . company-select-next)
+        ("<backtab>" . company-select-previous))
+  :hook ((text-mode prog-mode) . company-mode))
 
 
 (use-package flyspell
@@ -664,51 +657,38 @@
   (ispell-set-spellchecker-params)
   (ispell-hunspell-add-multi-dic "en_US,de_DE"))
 
-
 (use-package flycheck
-  :ensure t
+  :straight t
   :commands flycheck-mode
   :bind (("C-j" . next-error) ("C-k" . previous-error))
   :hook ((prog-mode org-mode) . flycheck-mode))
 
 
 (use-package lsp-mode
-  :ensure t
+  :straight t
   :commands lsp-deferred
-  :hook
-  ((rustic-mode
-    go-mode
-    python-mode
-    js-mode
-    typescript-mode
-    web-mode
-    css-mode
-    sgml-mode
-    yaml-mode
-    dockerfile-mode)
-   . lsp-deferred)
-  (before-save . lsp-format-buffer)
+  :custom
+  (lsp-diagnostic-package :flycheck)
+  (lsp-prefer-capf t)
+  (read-process-output-max (* 1024 1024))
+  (lsp-rust-server 'rust-analyzer)
+  :bind
+  (:map lsp-mode-map
+        ("K" . lsp-describe-thing-at-point)
+        ("gi" . lsp-goto-implementation)
+        ("gr" . lsp-find-references)
+        ("gd" . lsp-find-definition)
+        ("gD" . lsp-find-declaration))
   :general
   (leader-key
     :states 'normal
     :keymaps 'lsp-mode-map
     "c" '(:keymap lsp-command-map :which-key "Code"))
-  (general-define-key
-    :states 'normal
-    :keymaps 'lsp-mode-map
-    "K" 'lsp-describe-thing-at-point
-    "gi" 'lsp-goto-implementation
-    "gr" 'lsp-find-references
-    "gd" 'lsp-find-definition
-    "gD" 'lsp-find-declaration)
-  :custom
-  (lsp-diagnostic-package :flycheck)
-  (lsp-prefer-capf t)
-  (read-process-output-max (* 1024 1024))
-  (lsp-rust-server 'rust-analyzer))
+  :hook
+  (before-save . lsp-format-buffer))
 
 (use-package lsp-ui
-  :ensure t
+  :straight t
   :after lsp-mode
   :custom
   (lsp-ui-doc-max-width 80)
@@ -717,78 +697,91 @@
   (lsp-ui-doc-delay 0.25))
 
 (use-package lsp-ivy
-  :ensure t
+  :straight t
   :after lsp-mode
   :commands lsp-ivy-workspace-symbol)
 
 
 (use-package rustic
-  :ensure t
-  :mode ("\\.rs\\'" . rustic-mode))
-
+  :straight t
+  :mode ("\\.rs\\'" . rustic-mode)
+  :hook (rustic-mode . lsp-deferred))
 
 (use-package go-mode
-  :ensure t
-  :mode "\\.go\\'")
-
+  :straight t
+  :mode "\\.go\\'"
+  :hook (go-mode . lsp-deferred))
 
 (use-package python
-  :mode ("\\.py\\'" . python-mode))
+  :mode ("\\.py\\'" . python-mode)
+  :hook (python-mode . lsp-deferred))
 
 (use-package pyvenv
-  :ensure t
+  :straight t
   :commands pyvenv-mode
   :hook (python-mode . pyvenv-mode))
 
-
 (use-package js
-  :mode ("\\.js\\'" . js-mode))
+  :mode ("\\.js\\'" . js-mode)
+  :hook (js-mode . lsp-deferred))
 
 (use-package typescript-mode
-  :ensure t
+  :straight t
   :mode "\\.ts\\'"
   :custom
-  (typescript-indent-level 2))
+  (typescript-indent-level 2)
+  :hook (typescript-mode . lsp-deferred))
+
 
 (use-package web-mode
-  :ensure t
+  :straight t
   :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'")
-  :hook
-  (web-mode . sgml-electric-tag-pair-mode)
   :custom
   (web-mode-code-indent-offset 2)
   (web-mode-enable-auto-opening nil)
   (web-mode-enable-auto-pairing nil)
   (web-mode-enable-auto-quoting nil)
   (web-mode-markup-indent-offset 2)
-  (web-mode-enable-auto-indentation nil))
+  (web-mode-enable-auto-indentation nil)
+  :hook
+  (web-mode . sgml-electric-tag-pair-mode)
+  (web-mode . lsp-deferred))
 
 (use-package sgml-mode
   :mode "\\.html?\\'"
   :custom
-  (sgml-basic-offset 2))
+  (sgml-basic-offset 2)
+  :hook
+  (sgml-mode . lsp-deferred))
 
 (use-package css-mode
   :mode "\\.css\\'"
   :custom
-  (css-indent-offset 2))
-
+  (css-indent-offset 2)
+  :hook
+  (css-mode . lsp-deferred))
 
 (use-package json-mode
-  :ensure t
-  :mode "\\.json\\'")
+  :straight t
+  :mode "\\.json\\'"
+  :hook
+  (json-mode . lsp-deferred))
 
 (use-package yaml-mode
-  :ensure t
-  :mode "\\.ya?ml\\'")
+  :straight t
+  :mode "\\.ya?ml\\'"
+  :hook
+  (yaml-mode . lsp-deferred))
 
 (use-package nix-mode
-  :ensure t
+  :straight t
   :mode "\\.nix\\'")
 
 (use-package dockerfile-mode
-  :ensure t
-  :mode "Dockerfile\\'")
+  :straight t
+  :mode "Dockerfile\\'"
+  :hook
+  (dockerfile-mode . lsp-deferred))
 
 ;; Systemd-files
 (add-to-list 'auto-mode-alist '("\\.service\\'" . conf-unix-mode))
@@ -803,15 +796,22 @@
 (add-to-list 'auto-mode-alist '("\\.network\\'" . conf-unix-mode))
 (add-to-list 'auto-mode-alist '("\\.link\\'" . conf-unix-mode))
 
+
 ;; Use the escape-key to quit prompts
 (define-key key-translation-map (kbd "ESC") (kbd "C-g"))
-
 
 (general-define-key
  :states '(normal insert)
  "C-+" 'text-scale-increase
  "C--" 'text-scale-decrease
  "C-0" 'text-scale-adjust)
+
+
+(general-nmap
+  "gc" 'comment-line)
+(general-vmap
+  "gc" 'comment-or-uncomment-region)
+
 
 ;; TODO: use Hydra for some shortcuts
 (leader-key
@@ -825,24 +825,21 @@
   "j"   '(:ignore t :which-key "Jump")
   "jt" '(tab-next :which-key "Next Tab")
   "jT" '(tab-previous :which-key "Previous Tab")
+  "jd" '(dired-jump :which-key "Directory")
   "q"   '(:ignore t :which-key "Quit")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs")
   "qb" '(kill-this-buffer :which-key "Buffer")
   "qt" '(tab-close :which-key "Tab")
   "qw" '(delete-window :which-key "Window"))
 
+
 (defalias 'eb 'eval-buffer)
 (defalias 'kb 'kill-buffer)
 (defalias 'dr 'desktop-remove)
 (defalias 'cp 'check-parens)
-(defalias 'lt 'load-theme)
-(defalias 'plp 'package-list-packages)
+(defalias 'lt 'load-theme t)
 
-
-;; Load the private configuration
-(require 'private)
-
+(load-file "private.el")
 
 (provide 'init)
 ;;; init.el ends here
-
