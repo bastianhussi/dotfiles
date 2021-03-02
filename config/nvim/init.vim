@@ -89,7 +89,7 @@ Plug 'morhetz/gruvbox'
 " Plug 'sonph/onehalf', { 'rtp': 'vim' }
 " Plug 'arcticicestudio/nord-vim'
 Plug 'vim-airline/vim-airline'
-Plug 'ryanoasis/vim-devicons'
+" Plug 'ryanoasis/vim-devicons'
 Plug 'preservim/nerdtree'
 Plug 'sheerun/vim-polyglot'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
@@ -179,7 +179,6 @@ nnoremap <silent> <C-q> :bd<CR>
 
 let g:coc_global_extensions = [
             \ "coc-snippets",
-            \ "coc-tabnine",
             \ "coc-pairs",
             \ "coc-python",
             \ "coc-java",

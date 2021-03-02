@@ -24,7 +24,6 @@
 
 ;;; Code:
 
-
 ;; TODO: Use org with: agenda and mu4e
 ;; TODO: Create a unified setting for character limit
 ;; TODO: find way to write multiline comments (NOTE: works in go-mode already)
@@ -54,16 +53,14 @@
 
 (setq user-full-name "Bastian Hussi")
 
+;; The default directory should stay $XDG_CONFIG_HOME or ~/.config/emacs
+;; Install packages in ~/.local/share not ~/.config
+;; If the XDG_DATA_HOME variable is set use it. Otherwise fall back to ~/.local/share/
 (setq default-directory user-emacs-directory
       user-emacs-directory (expand-file-name "emacs" (or (getenv "XDG_DATA_HOME") "~/.local/share"))
       ;; Save temporary file under /tmp/emacs<uid>
       temporary-file-directory (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)
       custom-file (expand-file-name "custom.el" user-emacs-directory))
-
-
-;; The default directory should stay $XDG_CONFIG_HOME or ~/.config/emacs
-;; Install packages in ~/.local/share not ~/.config
-;; If the XDG_DATA_HOME variable is set use it. Otherwise fall back to ~/.local/share/
 
 (when (file-exists-p custom-file)
   (load custom-file))
@@ -75,7 +72,7 @@
 (with-eval-after-load 'gnutls
   (eval-when-compile
     (require 'gnutls))
-  (add-to-list 'gnutls-trustfiles "~/.ssl/certs/*.pem") ;; Path to self signed certificates.
+  (add-to-list 'gnutls-trustfiles "~/.config/ssl/certs/*.pem") ;; Path to self signed certificates.
   ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
   (setq gnutls-verify-error :trustfiles
         gnutls-min-prime-bits 3072))
@@ -142,6 +139,8 @@
     (set-font-faces))
 
 (use-package ligature
+  :disabled t ;; waiting for Emacs v28 and the this fix:
+  ;; http://git.savannah.gnu.org/cgit/emacs.git/commit/?id=fe903c5ab7354b97f80ecf1b01ca3ff1027be446
   :straight `(ligature :type git :host github :repo "mickeynp/ligature.el")
   :config
   ;; Enable the "www" ligature in every possible major mode
@@ -151,21 +150,17 @@
   (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
   ;; Enable all Cascadia Code ligatures in programming modes
   (ligature-set-ligatures
-   'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
-                ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
-                "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
-                "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
-                "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
-                "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
-                "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
-                "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
-                ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
-                "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
-                "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
-                "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
-                "\\\\" "://"))
-  ;; Enables ligature checks globally in all buffers. You can also do it
-  ;; per mode with `ligature-mode'.
+   'prog-mode '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
+                ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
+                "-<" "-<<" "-~" "#{" "#[" "##" "###" "####" "#(" "#?" "#_"
+                "#_(" ".-" ".=" ".." "..<" "..." "?=" "??" ";;" "/*" "/**"
+                "/=" "/==" "/>" "//" "///" "&&" "||" "||=" "|=" "|>" "^=" "$>"
+                "++" "+++" "+>" "=:=" "==" "===" "==>" "=>" "=>>" "<="
+                "=<<" "=/=" ">-" ">=" ">=>" ">>" ">>-" ">>=" ">>>" "<*"
+                "<*>" "<|" "<|>" "<$" "<$>" "<!--" "<-" "<--" "<->" "<+"
+                "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
+                "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))
+  ;; Enables ligature checks globally in all buffers.
   (global-ligature-mode t))
 
 
@@ -189,15 +184,19 @@
 (use-package doom-themes
   :straight t
   :config
-  (load-theme 'doom-dracula t)
+  ;; Allow loading themes without a warning. Like themes would be the only packages to be malicious ...
+  (setq custom-safe-themes t)
+  (load-theme 'doom-dracula)
   (doom-themes-org-config)
   (doom-themes-visual-bell-config))
+
+;; TODO Minibuffer: https://stackoverflow.com/questions/5079466/hide-emacs-echo-area-during-inactivity
+;; TODO Modeline: https://occasionallycogent.com/custom_emacs_modeline/index.html
 
 (use-package doom-modeline
   :straight t
   :commands doom-modeline-mode
   :custom
-  (doom-modeline-height 0)
   (doom-modeline-buffer-file-name-style 'truncate-except-project)
   (doom-modeline-project-detection 'projectile)
   :custom-face
@@ -210,8 +209,6 @@
   (after-init . doom-modeline-mode))
 
 
-;; NOTE: fixed bug. Solution do not use global-display-line-numbers-mode at all.
-;; Do not even set it -1, just ignore it.
 (use-package display-line-numbers
   :commands display-line-numbers-mode
   :custom
@@ -258,15 +255,13 @@
 
 
 ;; Sadly this is the only way Emacs will respect variables set by zsh.
-;; FIXME: Is there really no other option?
+;; FIXME: Is there really no other option? Is this still necessary on this Fedora machine?
 (use-package exec-path-from-shell
   :straight t
   :custom
   (exec-path-from-shell-arguments '("-l")) ;; Speed things up a bit
   :config
-  (if (daemonp)
-      (add-hook 'server-after-make-frame-hook #'exec-path-from-shell-initialize)
-    (exec-path-from-shell-initialize)))
+  (exec-path-from-shell-initialize))
 
 
 (setq large-file-warning-threshold nil
@@ -541,6 +536,9 @@
   (org-log-done 'time) ;; Add timestamp whenever task is finished
   (org-log-into-drawer t)
   (org-agenda-start-with-log-mode t)
+  :config
+  ;; TODO: learn about toggle-window-split
+  (advice-add 'org-agenda :after #'toggle-window-split)
   :general
   ;; Only show these bindings when in org-mode
   (leader-key
@@ -567,6 +565,7 @@
 
 
 ;; NOTE: The entire mu4e configuration resides in the private configuration-file.
+;; NOTE: elfeed resides in the private configuration as well.
 
 
 ;; A Git Porcelain inside Emacs.
@@ -605,6 +604,7 @@
 (use-package yasnippet
   :straight t
   :commands yas-global-mode
+  :custom (yas-prompt-functions '(yas-completing-prompt))
   :hook (after-init . yas-global-mode))
 
 (use-package yasnippet-snippets
@@ -660,6 +660,8 @@
 (use-package flycheck
   :straight t
   :commands flycheck-mode
+  :custom
+  (flycheck-set-indication-mode 'left-margin)
   :bind (("C-j" . next-error) ("C-k" . previous-error))
   :hook ((prog-mode org-mode) . flycheck-mode))
 
@@ -668,18 +670,19 @@
   :straight t
   :commands lsp-deferred
   :custom
+  (lsp-headerline-breadcrumb-enable nil)
   (lsp-diagnostic-package :flycheck)
   (lsp-prefer-capf t)
   (read-process-output-max (* 1024 1024))
   (lsp-rust-server 'rust-analyzer)
-  :bind
-  (:map lsp-mode-map
-        ("K" . lsp-describe-thing-at-point)
-        ("gi" . lsp-goto-implementation)
-        ("gr" . lsp-find-references)
-        ("gd" . lsp-find-definition)
-        ("gD" . lsp-find-declaration))
   :general
+  (general-define-key
+   :states 'normal
+   :keymaps 'lsp-mode-map
+   "gi" 'lsp-goto-implementation
+   "gr" 'lsp-find-references
+   "gd" 'lsp-find-definition
+   "gD" 'lsp-find-declaration)
   (leader-key
     :states 'normal
     :keymaps 'lsp-mode-map
@@ -690,11 +693,15 @@
 (use-package lsp-ui
   :straight t
   :after lsp-mode
+  :bind
+  ;; Replace evil search with Swiper
+  ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+  ([remap xref-find-references] . lsp-ui-peek-find-references)
   :custom
-  (lsp-ui-doc-max-width 80)
-  (lsp-ui-doc-max-height 60)
+  (lsp-ui-doc-max-width 60)
+  (lsp-ui-doc-max-height 80)
   (lsp-ui-doc-position 'at-point)
-  (lsp-ui-doc-delay 0.25))
+  (lsp-ui-doc-delay 0.5))
 
 (use-package lsp-ivy
   :straight t
@@ -723,13 +730,15 @@
 
 (use-package js
   :mode ("\\.js\\'" . js-mode)
+  :config
+  (setq-default js-indent-level 2)
   :hook (js-mode . lsp-deferred))
 
 (use-package typescript-mode
   :straight t
   :mode "\\.ts\\'"
-  :custom
-  (typescript-indent-level 2)
+  :config
+  (setq-default typescript-indent-level 2)
   :hook (typescript-mode . lsp-deferred))
 
 

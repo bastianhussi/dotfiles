@@ -24,7 +24,6 @@
 
 ;;; Code:
 
-
 ;; NOTE: do not use 'most-positive-fixnum', this will cause Emacs to freeze on the first start
 (setq gc-cons-threshold (* 100 1024 1024)
       gc-cons-percentage 0.6)
