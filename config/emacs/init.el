@@ -24,19 +24,6 @@
 
 ;;; Code:
 
-;; TODO: Use org with: agenda and mu4e
-;; TODO: Create a unified setting for character limit
-;; TODO: find way to write multiline comments (NOTE: works in go-mode already)
-;; TODO: spelling + grammer
-;; TODO: Fix weird escape characters when building docker images
-;; TODO: tsx, jsx, vue-files
-;; TODO: use org-file for configuration
-;; FIXME: missing output on docker build
-;; FIXME: a lot of ansi escape sequences when failing to install lsp-servers
-;; TODO: remap C-y into C-shift-c in minibuffer to past passwords
-;; REVIEW: reduce startup-time even more (better than 0.7-0.8, currently 1.3)?
-
-
 (add-hook 'after-init-hook
           (lambda ()
             ;; Always set the home directory to the current buffers default directory.
@@ -139,7 +126,7 @@
     (set-font-faces))
 
 (use-package ligature
-  :disabled t ;; waiting for Emacs v28 and the this fix:
+  ;; :disabled t ;; waiting for Emacs v28 and the this fix:
   ;; http://git.savannah.gnu.org/cgit/emacs.git/commit/?id=fe903c5ab7354b97f80ecf1b01ca3ff1027be446
   :straight `(ligature :type git :host github :repo "mickeynp/ligature.el")
   :config
@@ -190,9 +177,6 @@
   (doom-themes-org-config)
   (doom-themes-visual-bell-config))
 
-;; TODO Minibuffer: https://stackoverflow.com/questions/5079466/hide-emacs-echo-area-during-inactivity
-;; TODO Modeline: https://occasionallycogent.com/custom_emacs_modeline/index.html
-
 (use-package doom-modeline
   :straight t
   :commands doom-modeline-mode
@@ -202,11 +186,13 @@
   :custom-face
   (mode-line ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
+  :config
+  (defun doom-modeline-enable-icons ()
+    (setq doom-modeline-icon (display-graphic-p)))
   :hook
-  ;; The daemon requires this. Only activate the icons in windowed version
-  (server-after-make-frame . (lambda ()
-                               (setq doom-modeline-icon (display-graphic-p))))
-  (after-init . doom-modeline-mode))
+  ;; FIXME: the right segment is displayed incorrectly when using the client
+  (window-setup . doom-modeline-mode)
+  (server-after-make-frame . doom-modeline-enable-icons))
 
 
 (use-package display-line-numbers
@@ -238,6 +224,7 @@
   :hook (prog-mode . hl-todo-mode))
 
 ;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
+;; NOTE: no need to enable tab-bar-mode. If there is more than one tab the mode will be enable automatically.
 (use-package tab-bar
   :custom
   (tab-bar-close-button-show nil)
@@ -374,18 +361,20 @@
   :config
   (general-evil-setup t)
   (general-setq evil-search-module 'evil-search)
+  ;; NOTE: This overrides SPC in every keymap
   (general-create-definer leader-key
-    :keymaps '(normal insert visual emacs)
-    :prefix "SPC"
-    :global-prefix "C-SPC"))
+    :states 'normal
+    :keymaps 'override
+    :prefix "SPC"))
+    ;; :global-prefix "C-SPC"))
 
 ;; Displays key bindings following the currently entered incomplete command in a popup.
 (use-package which-key
   :straight t
   :custom
-  (which-key-idle-delay 0.75)
-  :config
-  (which-key-mode 1))
+  (which-key-idle-delay 0.50)
+  :hook
+  (window-setup . which-key-mode))
 
 
 ;; Ivy is a generic completion mechanism for Emacs.
@@ -401,7 +390,6 @@
   (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
   ;; Do not close the minibuffer with delete
   (ivy-on-del-error-function nil)
-  ;; FIXME: improve this settings (fuzzy doesn't work for files, recentf, ...)
   (ivy-re-builders-alist
    '((read-file-name-internal . ivy--regex-fuzzy)
      (t . ivy--regex-plus)))
@@ -413,7 +401,6 @@
         ("<backtab>" . ivy-previous-line))
   :hook (after-init . ivy-mode))
 
-;; TODO: https://github.com/seagle0128/.emacs.d/blob/master/lisp/init-ivy.el
 (use-package counsel
   :straight t
   :commands counsel-mode
@@ -432,7 +419,7 @@
     "fr" 'counsel-recentf)
   ;; Enabling counsel-mode remaps built-in Emacs functions that have counsel replacements
   :hook
-  (ivy-mode . counsel-mode)) ;; NOTE: Only calling this in :config doesn't work
+  (ivy-mode . counsel-mode))
 
 ;; TODO: configure
 (use-package prescient
@@ -475,16 +462,24 @@
 (use-package dired
   :commands (dired dired-jump)
   :custom
-  (dired-auto-revert-buffer t) ;; NOTE: describe variable
-  (dired-dwim-target t) ;; NOTE: describe variable
+  (dired-auto-revert-buffer t)
+  (dired-dwim-target t)
   (dired-listing-switches "-Ahlv --group-directories-first") ;; Change the arguments passed to ls
   (dired-hide-details-hide-symlink-targets nil) ;; ...
   (dired-recursive-copies 'always)
   :config
+  ;; use dired-find-alternate-file instead of dired-find-file to prevent dired to create so many buffers.
+  (put 'dired-find-alternate-file 'disabled nil) ;; Need to be enabled manually
   (evil-collection-define-key 'normal 'dired-mode-map
     "h" 'dired-up-directory ;; go up a directory
-    "l" 'dired-find-file)) ;; go into the selected directory
+    "l" 'dired-find-alternate-file)) ;; go into the selected directory
 
+
+(use-package pdf-tools
+  :straight t
+  :mode ("\\.pdf\\'" . pdf-view-mode)
+  :config
+  (pdf-loader-install))
 
 (use-package tex-site
   :mode ("\\.tex\\'" . LaTeX-mode))
@@ -502,11 +497,16 @@
   (TeX-PDF-mode t)
   (TeX-auto-save t)
   (TeX-parse-self t)
-  (TeX-view-program-selection
-   '((output-pdf "xdg-open")
-     (output-html "xdg-open")))
+  (TeX-view-program-selection '((output-pdf "PDF Tools")))
+  (TeX-view-program-list '(("PDF Tools" TeX-pdf-tools-sync-view)))
   :config
   (setq-default TeX-master nil))
+
+(add-hook 'TeX-after-compilation-finished-functions #'TeX-revert-document-buffer)
+
+;; Don't split horizontally
+;; (setq split-height-threshold nil)
+;; (setq split-width-threshold 0)
 
 (use-package reftex
   :after latex
@@ -516,12 +516,13 @@
   :config
   (turn-on-reftex))
 
+
 ;; https://joostkremers.github.io/ebib/ebib-manual.html
 (use-package ebib
   :straight t
   :after latex
   :custom
-  (ebib-bibtex-dialect 'BibTeX))
+  (ebib-bibtex-dialect 'Biber))
 
 
 ;; A major mode for convenient plain text markup — and much more.
@@ -532,13 +533,11 @@
   ;; TODO: implement these on my own https://github.com/edwtjo/evil-org-mode
   :custom
   (org-directory "~/Nextcloud/Notes/")
-  (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
   (org-log-done 'time) ;; Add timestamp whenever task is finished
   (org-log-into-drawer t)
+  (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
+  (org-agenda-window-setup 'current-window) ;; Do not spit the window
   (org-agenda-start-with-log-mode t)
-  :config
-  ;; TODO: learn about toggle-window-split
-  (advice-add 'org-agenda :after #'toggle-window-split)
   :general
   ;; Only show these bindings when in org-mode
   (leader-key
@@ -548,24 +547,29 @@
 
 ;; TODO: configure
 (use-package eshell
-  :commands eshell)
+  :commands eshell
+  :custom
+  (eshell-history-size 10000)
+  (eshell-buffer-maximum-lines 10000)
+  (eshell-hist-ignoredups t))
 
 (use-package vterm
   :straight t
   :commands vterm
   :bind
   ([remap term] . vterm)
-  :hook
-  (vterm-mode . (lambda ()
-                  (setq-local evil-insert-state-cursor 'box
-                              evil-move-cursor-back nil)))
   :custom
   (vterm-kill-buffer-on-exit t)
-  (vterm-max-scrollback 5000))
+  (vterm-max-scrollback 5000)
+  :config
+  (defun vterm-adjust-evil-cursor ()
+    (setq-local evil-insert-state-cursor 'box
+                evil-move-cursor-back nil))
+  :hook
+  (vterm-mode . vterm-adjust-evil-cursor))
 
 
 ;; NOTE: The entire mu4e configuration resides in the private configuration-file.
-;; NOTE: elfeed resides in the private configuration as well.
 
 
 ;; A Git Porcelain inside Emacs.
@@ -615,7 +619,6 @@
   :straight t
   :commands company-mode
   :custom
-  ;; TODO: which backends to use?
   (company-backends '((company-capf :with company-yasnippet)
                       (company-dabbrev-code company-keywords company-files company-dabbrev)))
   (company-dabbrev-downcase nil)
@@ -647,7 +650,6 @@
   (text-mode . flyspell-mode)
   (prog-mode . flyspell-prog-mode))
 
-;; FIXME: Other way to do this or using aspell? Recater this anyway!
 (use-package ispell
   :after flyspell
   :custom
@@ -701,7 +703,7 @@
   (lsp-ui-doc-max-width 60)
   (lsp-ui-doc-max-height 80)
   (lsp-ui-doc-position 'at-point)
-  (lsp-ui-doc-delay 0.5))
+  (lsp-ui-doc-delay 0.50))
 
 (use-package lsp-ivy
   :straight t
@@ -809,17 +811,105 @@
 ;; Use the escape-key to quit prompts
 (define-key key-translation-map (kbd "ESC") (kbd "C-g"))
 
-(general-define-key
- :states '(normal insert)
- "C-+" 'text-scale-increase
- "C--" 'text-scale-decrease
- "C-0" 'text-scale-adjust)
 
+(use-package hydra
+  :straight t)
+
+
+
+(defhydra hydra-window (global-map "<f5>")
+   "
+Movement^^        ^Split^         ^Switch^		^Resize^
+----------------------------------------------------------------
+_h_ ←       	_v_ertical    	_b_uffer		_q_ X←
+_j_ ↓        	_x_ horizontal	_f_ind files	_w_ X↓
+_k_ ↑        	_z_ undo      	_a_ce 1		_e_ X↑
+_l_ →        	_Z_ reset      	_s_wap		_r_ X→
+_F_ollow		_D_lt Other   	_S_ave		max_i_mize
+_SPC_ cancel	_o_nly this   	_d_elete	
+"
+   ("h" windmove-left )
+   ("j" windmove-down )
+   ("k" windmove-up )
+   ("l" windmove-right )
+   ("q" hydra-move-splitter-left)
+   ("w" hydra-move-splitter-down)
+   ("e" hydra-move-splitter-up)
+   ("r" hydra-move-splitter-right)
+   ("b" helm-mini)
+   ("f" helm-find-files)
+   ("F" follow-mode)
+   ("a" (lambda ()
+          (interactive)
+          (ace-window 1)
+          (add-hook 'ace-window-end-once-hook
+                    'hydra-window/body))
+       )
+   ("v" (lambda ()
+          (interactive)
+          (split-window-right)
+          (windmove-right))
+       )
+   ("x" (lambda ()
+          (interactive)
+          (split-window-below)
+          (windmove-down))
+       )
+   ("s" (lambda ()
+          (interactive)
+          (ace-window 4)
+          (add-hook 'ace-window-end-once-hook
+                    'hydra-window/body)))
+   ("S" save-buffer)
+   ("d" delete-window)
+   ("D" (lambda ()
+          (interactive)
+          (ace-window 16)
+          (add-hook 'ace-window-end-once-hook
+                    'hydra-window/body))
+       )
+   ("o" delete-other-windows)
+   ("i" ace-maximize-window)
+   ("z" (progn
+          (winner-undo)
+          (setq this-command 'winner-undo))
+   )
+   ("Z" winner-redo)
+   ("SPC" nil))
+
+;; SEE: https://github.com/abo-abo/hydra/blob/master/hydra-examples.el
+
+(defhydra hydra-jump-tabs (nil nil)
+  "Jump between tabs"
+  ("TAB" tab-next "Next Tab")
+  ("<backtab>" tab-previous "Previous Tab"))
+
+
+(defhydra hydra-zoom (nil nil)
+  "
+   _+_: increase size
+   _-_: decrease size
+   _0_: reset
+  "
+  ("+" text-scale-increase nil)
+  ("-" text-scale-decrease nil)
+  ("0" text-scale-adjust nil :color blue)) ;; quit when calling this function
+
+(global-set-key (kbd "C-+") 'hydra-zoom/text-scale-increase)
+(global-set-key (kbd "C--") 'hydra-zoom/text-scale-decrease)
+(global-set-key (kbd "C-0") 'hydra-zoom/text-scale-adjust)
+
+
+;; Simulate Tim Popes vim-commentary for Evil
+(evil-define-operator evil-comment-region (start end)
+  "Comment or uncomment the given region"
+  (comment-or-uncomment-region start end))
 
 (general-nmap
-  "gc" 'comment-line)
+  "gc" (general-key-dispatch 'evil-comment-region
+         "c" 'comment-line))
 (general-vmap
-  "gc" 'comment-or-uncomment-region)
+  "gc" 'evil-comment-region)
 
 
 ;; TODO: use Hydra for some shortcuts
@@ -832,21 +922,21 @@
   "ne" '(eshell :which-key "Eshell")
   "nT" '(term :which-key "Term")
   "j"   '(:ignore t :which-key "Jump")
-  "jt" '(tab-next :which-key "Next Tab")
-  "jT" '(tab-previous :which-key "Previous Tab")
   "jd" '(dired-jump :which-key "Directory")
+  "jt" '(hydra-jump-tabs/body :which-key "Tabs")
   "q"   '(:ignore t :which-key "Quit")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs")
   "qb" '(kill-this-buffer :which-key "Buffer")
   "qt" '(tab-close :which-key "Tab")
-  "qw" '(delete-window :which-key "Window"))
+  "qw" '(delete-window :which-key "Window")
+  "qf" 'suspend-frame)
 
 
 (defalias 'eb 'eval-buffer)
 (defalias 'kb 'kill-buffer)
 (defalias 'dr 'desktop-remove)
 (defalias 'cp 'check-parens)
-(defalias 'lt 'load-theme t)
+(defalias 'lt 'load-theme)
 
 (load-file "private.el")
 
