@@ -56,6 +56,8 @@
                             (right-fringe . 0)))
 
 
+;; tell the native-comp system to automatically generate the natively compiled files when Emacs loads a new .elc file
+(setq comp-deferred-compilation t)
 
 ;; prevent package.el loading packages prior to their init-file loading.
 (setq package-enable-at-startup nil)

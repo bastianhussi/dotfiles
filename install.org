@@ -1,3 +1,29 @@
+* Emacs
+** Install
+   #+begin_src shell
+   git clone --depth=1  https://git.savannah.gnu.org/git/emacs.git -b feature/native-comp
+   cd emacs
+   make
+   ./autogen.sh
+   ./configure \
+       --with-native-compilation \
+       --with-mailutils \
+       --with-gnutls \
+       --with-cairo \
+       --with-harfbuzz \
+       CFLAGS="-O2 -march=znver2 -pipe" \
+       CPPFLAGS="${CFLAGS}"
+   make
+sudo make install
+   #+end_src
+** mu
+   #+begin_src shell
+   git clone https://github.com/djcb/mu.git
+   cd mu
+   ./configure
+   make
+   sudo make install
+   #+end_src
 * Packages
   Yay:
   #+begin_src
