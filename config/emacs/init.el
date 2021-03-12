@@ -1,64 +1,7 @@
-;;; init.el --- Emacs configuration                  -*- lexical-binding: t; -*-
-
-;; Copyright (C) 2021  Bastian Hussi
-
-;; Author: Bastian Hussi
-;; Keywords: 
-
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-;;; Commentary:
-
-;; 
-
-;;; Code:
-
-(add-hook 'after-init-hook
-          (lambda ()
-            ;; Always set the home directory to the current buffers default directory.
-            ;; NOTE: invoking this earlier doesn't work
-            (global-auto-revert-mode 1)
-            ;; Sync mail in background
-            (mu4e t)
-            ;; Start server if its not already running
-            (require 'server)
-            (unless (server-running-p)
-              (server-start))))
-
+;; -*- lexical-binding: t; -*-
+;; init.el --- Where it all begins...
 
 (setq user-full-name "Bastian Hussi")
-
-;; The default directory should stay $XDG_CONFIG_HOME or ~/.config/emacs
-;; Install packages in ~/.local/share not ~/.config
-;; If the XDG_DATA_HOME variable is set use it. Otherwise fall back to ~/.local/share/
-(setq default-directory user-emacs-directory
-      user-emacs-directory (expand-file-name "emacs" (or (getenv "XDG_DATA_HOME") "~/.local/share"))
-      ;; Save temporary file under /tmp/emacs<uid>
-      temporary-file-directory (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)
-      custom-file (expand-file-name "custom.el" user-emacs-directory))
-
-(when (file-exists-p custom-file)
-  (load custom-file))
-;; This directory will not be created automatically
-(make-directory temporary-file-directory t)
-
-;; Do not report native compile warnings
-(setq comp-async-report-warnings-errors nil)
-;; Change the directory where the  natively compiled *.eln files will be cached
-(when (boundp 'comp-eln-load-path)
-  (setcar comp-eln-load-path
-          (expand-file-name "cache/eln-cache/" user-emacs-directory)))
 
 
 ;; Setup GnuTLS for package downloads and sending mail with mu4e
@@ -70,8 +13,6 @@
   (setq gnutls-verify-error :trustfiles
         gnutls-min-prime-bits 3072))
 
-
-(setq straight-fix-flycheck t)
 
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -96,27 +37,38 @@
 (fset 'yes-or-no-p 'y-or-n-p)
 
 
-(setq inhibit-startup-message t
-      initial-scratch-message ""
-      initial-major-mode 'org-mode
-      frame-title-format "GNU Emacs")
+(setq inhibit-splash-screen nil ;; FIXME: gets overridden later
+      inhibit-startup-screen t
+      inhibit-startup-message t
+      ;; inhibit-startup-echo-area-message t
+      initial-scratch-message nil
+      initial-major-mode 'org-mode)
+
 
 (setq confirm-kill-emacs 'y-or-n-p)
-(setq use-dialog-box nil) ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+(setq use-dialog-box nil ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+      use-file-dialog nil
+      pop-up-windows nil)
 
-(set-language-environment "UTF-8")
+
+(prefer-coding-system       'utf-8)
 (set-default-coding-systems 'utf-8)
-(set-keyboard-coding-system 'iso-latin-1)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(set-language-environment   'utf-8)
+
+;; ;; Underline line at descent position, not baseline position
+;; (setq x-underline-at-descent-line t)
+
+;; ;; No ugly button for checkboxes
+;; (setq widget-image-enable nil)
 
 
-;; FIXME: Why doesn't this work in the eary-init-file?
-(set-scroll-bar-mode nil)
-
-(defun set-font-faces ()
+(defun my/set-font-faces ()
   "Setting up fonts + emoji support."
   (defvar my/font-size 160)
   (set-face-attribute 'default nil :font "Fira Code Retina" :height my/font-size)
-  (set-face-attribute 'fixed-pitch nil :font "Fira Sans" :height my/font-size)
+  (set-face-attribute 'fixed-pitch nil :font "Cascadia Code" :height my/font-size)
   (set-face-attribute 'variable-pitch nil :font "Cantarell" :height my/font-size :weight 'regular)
   ;; By default, Emacs will try to use the default face’s font for
   ;; displaying symbol and punctuation characters, disregarding the
@@ -126,20 +78,19 @@
   (set-fontset-font t 'symbol "Noto Color Emoji")
   (set-fontset-font t 'symbol "Symbola" nil 'append))
 
-;; Make sure the fonts are set: with daemon and without
-(if (daemonp)
-    (add-hook 'server-after-make-frame-hook #'set-font-faces)
-    (set-font-faces))
+(add-hook 'window-setup-hook #'my/set-font-faces)
+
 
 (use-package ligature
-  :straight `(ligature :type git :host github :repo "mickeynp/ligature.el")
+  :if (>= emacs-major-version 28)
+  :straight '(:host github :repo "mickeynp/ligature.el")
+  :commands global-ligature-mode
   :config
   ;; Enable the "www" ligature in every possible major mode
   (ligature-set-ligatures 't '("www"))
   ;; Enable traditional ligature support in eww-mode, if the
   ;; `variable-pitch' face supports it
   (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
-  ;; Enable all Cascadia Code ligatures in programming modes
   (ligature-set-ligatures
    'prog-mode '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
                 ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
@@ -152,13 +103,17 @@
                 "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
                 "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))
   ;; Enables ligature checks globally in all buffers.
-  (global-ligature-mode t))
+  :hook
+  (window-setup . global-ligature-mode))
 
+
+;; Don't show a backslash when wrapping a line
+(set-display-table-slot standard-display-table 'wrap ?\ )
 
 (setq-default cursor-in-non-selected-windows nil ; Hide the cursor in inactive windows
               fill-column 99
-              tab-width 4
-              indent-tabs-mode nil)
+              indent-tabs-mode nil
+              tab-width 4)
 
 
 ;; Mouse settings
@@ -171,14 +126,12 @@
 (setq visible-bell t) ;; To use this the variable above has to be commented out
 
 
-(setq epa-file-cache-passphrase-for-symmetric-encryption t
-      epa-file-select-keys nil)
-
 ;; Prefer the encrypted authinfo-file
 (setq auth-sources '((:source "~/.authinfo.gpg")
                      (:source "~/.authinfo")))
 
-
+(setq epa-file-cache-passphrase-for-symmetric-encryption t
+      epa-file-select-keys nil)
 
 (setq large-file-warning-threshold nil
       find-file-visit-truename t
@@ -195,18 +148,18 @@
 (setq auto-save-list-file-prefix
       temporary-file-directory)
 
-
 (setq vc-follow-symlinks t
       delete-by-moving-to-trash t
       ;; Prevent issues with build-watchers
       create-lockfiles nil)
 
+(global-auto-revert-mode 1)
 
 ;; Setup the colorscheme and add a nice looking modeline
 (use-package doom-themes
   :if (display-graphic-p)
   :straight t
-  :config
+  :init
   ;; Allow loading themes without a warning. Like themes would be the only packages to be malicious ...
   (setq custom-safe-themes t)
   (load-theme 'doom-dracula)
@@ -226,18 +179,14 @@
   :straight t
   :commands doom-modeline-mode
   :custom
+  (doom-modeline-height 40) ;; Default value of 25 is too small
   (doom-modeline-buffer-file-name-style 'truncate-except-project)
-  ;; (doom-modeline-project-detection 'projectile)
+  (doom-modeline-project-detection 'project)
   :custom-face
   (mode-line ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
-  :config
-  (defun doom-modeline-enable-icons ()
-    (setq doom-modeline-icon (display-graphic-p)))
   :hook
-  ;; FIXME: the right segment is displayed incorrectly when using the client
-  (window-setup . doom-modeline-mode)
-  (server-after-make-frame . doom-modeline-enable-icons))
+  (window-setup . doom-modeline-mode))
 
 
 (use-package display-line-numbers
@@ -249,6 +198,7 @@
 
 ;; Highlight the current line.
 (use-package hl-line
+  :if (display-graphic-p)
   :commands hl-line-mode
   :hook
   ((text-mode prog-mode) . hl-line-mode))
@@ -285,10 +235,12 @@
   :custom
   (evil-want-keybinding nil)
   (evil-want-integration t)
-  (evil-want-fine-undo nil)
-  (evil-want-C-i-jump t)
+  (evil-want-C-i-jump t) ;; jump forward in the jump-list
+  (evil-want-fine-undo t) ;; actions are undone in several steps
   (evil-undo-system 'undo-redo)
   (evil-move-beyond-eol t)
+  (evil-vsplit-window-right t)
+  (evil-split-window-below t)
   ;; You can't escape vim
   (evil-toggle-key "")
   :config
@@ -336,11 +288,10 @@
   (general-evil-setup t)
   (general-setq evil-search-module 'evil-search)
   ;; NOTE: This overrides SPC in every keymap
-  (general-create-definer leader-key
+  (general-create-definer my/leader-key
     :states 'normal
     :keymaps 'override
     :prefix "SPC"))
-    ;; :global-prefix "C-SPC"))
 
 
 ;; Displays key bindings following the currently entered incomplete command in a popup.
@@ -355,13 +306,14 @@
 ;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
 ;; NOTE: no need to enable tab-bar-mode. If there is more than one tab the mode will be enable automatically.
 (use-package tab-bar
+  :commands tab-bar-mode
   :custom
   (tab-bar-close-button-show nil)
   (tab-bar-new-button-show nil)
   (tab-bar-new-tab-choice "*scratch*") ;; New tabs will show the scratch-buffer
   (tab-bar-new-tab-to 'rightmost)  ;; Always add new tabs to the rightmost position
   :config
-  (defhydra hydra-tab-bar (:color amaranth)
+  (defhydra my/hydra-tab-bar (:color amaranth)
     "Tab Bar Operations"
     ("t" tab-new "Create a new tab" :column "Creation")
     ("d" dired-other-tab "Open Dired in another tab")
@@ -374,7 +326,7 @@
     ("h" tab-previous "Previous Tab")
     ("q" nil "Exit" :exit t))
   :general
-  (leader-key "t" '(hydra-tab-bar/body :which-key "Tabs")))
+  (my/leader-key "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
 
 
 ;; Automatically insert closing pairs like ", ), ], }
@@ -442,7 +394,7 @@
   ([remap evil-ex-search-forward] . swiper)
   ([remap evil-ex-search-backward] . swiper-backward)
   :general
-  (leader-key
+  (my/leader-key
     "f"  '(:ignore t :which-key "Find")
     "ff" 'counsel-fzf
     "fg" 'counsel-rg
@@ -457,12 +409,15 @@
 ;; TODO: configure
 (use-package prescient
   :straight t
-  :commands prescient-persist-mode
+  :after (ivy-prescient company-prescient)
   :custom
   (prescient-history-length 3)
   (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
-  (prescient-filter-method '(literal regexp fuzzy)))
+  (prescient-filter-method '(literal regexp fuzzy))
+  :config
+  (prescient-persist-mode 1))
 
+;; TODO: improve the loading of these packages (are hooks a solution?)
 (use-package ivy-prescient
   :straight t
   :after counsel
@@ -470,24 +425,32 @@
   (ivy-prescient-enable-filtering nil) ;; Let ivy handle the filtering
   (ivy-prescient-retain-classic-highlighting t) ;; Keep classic highlighting
   :config
-  (ivy-prescient-mode 1)
-  (prescient-persist-mode 1)) ;; Enable saving the prescient results when loading this mode
+  (ivy-prescient-mode 1))
 
+;; TODO: move to company-mode
 (use-package company-prescient
   :straight t
   :after company
   :config
-  (company-prescient-mode 1)
-  (prescient-persist-mode 1))
+  (company-prescient-mode 1))
 
 
 (use-package recentf
+  :defer 10
   :commands recentf-mode
   :custom
   (recentf-max-menu-items 25)
   (recentf-max-saved-items 25)
   :config
-  (run-at-time nil (* 15 60) 'recentf-save-list)) ;; Save every 15 minutes
+  (recentf-mode 1)
+  ;; Save every 15 minutes
+  (run-at-time nil (* 15 60) 'recentf-save-list))
+
+
+(use-package project
+  :general
+  (my/leader-key
+    "p" '(:keymap project-prefix-map :which-key "Project")))
 
 
 ;; Emacs file manager
@@ -508,12 +471,7 @@
     "l" 'dired-find-alternate-file)) ;; go into the selected directory
 
 
-(use-package pdf-tools
-  :straight t
-  :mode ("\\.pdf\\'" . pdf-view-mode)
-  :config
-  (pdf-loader-install))
-
+;; TODO: is there a way to refactor this?
 (use-package latex
   :straight auctex
   :commands LaTeX-mode
@@ -529,13 +487,10 @@
   (TeX-PDF-mode t)
   (TeX-auto-save t)
   (TeX-parse-self t)
-  (TeX-view-program-selection '((output-pdf "PDF Tools")))
-  (TeX-view-program-list '(("PDF Tools" TeX-pdf-tools-sync-view)))
   :config
   (setq-default TeX-master nil)
   :hook
   (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
-
 
 (use-package reftex
   :straight auctex
@@ -545,7 +500,6 @@
   (reftex-use-external-file-finders t)
   :config
   (turn-on-reftex))
-
 
 ;; https://joostkremers.github.io/ebib/ebib-manual.html
 (use-package ebib
@@ -565,14 +519,27 @@
   (org-directory "~/Nextcloud/Notes/")
   (org-log-done 'time) ;; Add timestamp whenever task is finished
   (org-log-into-drawer t)
+  (org-hide-leading-stars t) ;; Don't show all the stars in front of the headings
   (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
   (org-agenda-start-with-log-mode t)
   (org-agenda-window-setup 'other-tab) ;; Open org-agenda in a new tab.
+  :config
+  ;; =M-x customize-group RET org-appearance RET=
+  ;; =M-x customize-group RET org-faces RET=
+  (set-face-attribute 'org-block nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-formula nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-code nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch)
   :general
   ;; Only show these bindings when in org-mode
-  (leader-key
+  (my/leader-key
     "o"   '(:ignore t :which-key "Org")
     "oa" 'org-agenda))
+
 
 (defvar my/term-history-size 5000)
 
@@ -593,11 +560,11 @@
   (vterm-kill-buffer-on-exit t)
   (vterm-max-scrollback my/term-history-size)
   :config
-  (defun vterm-adjust-evil-cursor ()
+  (defun my/vterm-adjust-evil-cursor ()
     (setq-local evil-insert-state-cursor 'box
                 evil-move-cursor-back nil))
   :hook
-  (vterm-mode . vterm-adjust-evil-cursor))
+  (vterm-mode . my/vterm-adjust-evil-cursor))
 
 
 ;; NOTE: The entire mu4e configuration resides in the private configuration-file.
@@ -607,7 +574,7 @@
 (use-package magit
   :straight t
   :general
-  (leader-key
+  (my/leader-key
     "g"   '(:ignore t :which-key "Git")
     "gs"  'magit-status
     "gd"  'magit-diff-unstaged
@@ -634,9 +601,11 @@
   :straight t
   :after yasnippet)
 
+
+;; REVIEW: is global-company-mode necessary?
 (use-package company
   :straight t
-  :commands company-mode
+  :commands global-company-mode
   :custom
   (company-backends '((company-capf :with company-yasnippet)
                       (company-dabbrev-code company-keywords company-files company-dabbrev)))
@@ -657,7 +626,7 @@
         ("RET" . company-complete-selection)
         ("TAB" . company-select-next)
         ("<backtab>" . company-select-previous))
-  :hook ((text-mode prog-mode) . company-mode))
+  :hook (after-init . global-company-mode))
 
 
 (use-package flyspell
@@ -678,40 +647,71 @@
   (ispell-set-spellchecker-params)
   (ispell-hunspell-add-multi-dic "en_US,de_DE"))
 
-(use-package flycheck
-  :straight t
-  :commands flycheck-mode
-  :custom
-  (flycheck-set-indication-mode 'left-margin)
+(use-package flymake
+  :commands flymake-mode
   :config
-  (defhydra hydra-flycheck
-    (:pre (flycheck-list-errors)
-          :post (quit-windows-on "*Flycheck errors*")
+  (defhydra my/hydra-flymake
+    (:pre (flymake-show-diagnostics-buffer)
+          :post (quit-windows-on (format "*Flymake diagnostics for %s*" (buffer-name)))
           :hint nil)
     "Errors"
-    ("f" flycheck-error-list-set-filter "Filter")
-    ("j" flycheck-next-error "Next")
-    ("k" flycheck-previous-error "Previous")
-    ("gg" flycheck-first-error "First")
-    ("G" (progn (goto-char (point-max)) (flycheck-previous-error)) "Last")
+    ("j" flymake-goto-next-error "Next")
+    ("k" flymake-goto-prev-error "Previous")
+    ("gg" (progn (goto-char (point-max)) (flymake-goto-next-error)) "First")
+    ("G" (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
     ("q" nil))
   :general
-  (leader-key "e" '(hydra-flycheck/body :which-key "Errors"))
-  :hook ((prog-mode org-mode) . flycheck-mode))
+  (my/leader-key "e" '(my/hydra-flymake/body :which-key "Errors"))
+  :hook (prog-mode . flymake-mode))
 
 
+;; TODO: setup eldoc (build-in)
+;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
   :straight t
   :commands eglot-ensure
-  :bind
-  (:map eglot-mode-map
-        ("<f2>" . eglot-rename)
-        ("gd" . xref-find-definitions)))
+  :config
+  (setq eglot-stay-out-of '("company"))
+  :general
+  (general-define-key
+   :states 'normal
+   :keymaps 'eglot-mode-map
+   "<f2>" 'eglot-rename
+   "gd" 'xref-find-definitions
+   "gr" 'xref-find-references
+   "gD" 'eglot-find-declaration
+   "gi" 'eglot-find-implementation
+   "gt" 'eglot-find-typeDefinition
+   "gh" 'eldoc)
+  (my/leader-key
+   :states 'normal
+   :keymaps 'eglot-mode-map
+   "c"   '(:ignore t :which-key "Code")
+   "ca"  '(:ignore t :which-key "Actions")
+   "caa" 'eglot-code-actions
+   "caq" 'eglot-code-action-quickfix
+   "cae" 'eglot-code-action-extract
+   "cai" 'eglot-code-action-inline
+   "car" 'eglot-code-action-rewrite
+   "cao" 'eglot-code-action-organize-imports
+   "cf" 'eglot-format-buffer
+   "cr" 'eglot-rename
+   "cs"  '(:ignore t :which-key "Server")
+   "css" 'eglot-shutdown
+   "csr" 'eglot-reconnect)
+  (general-vmap
+    :keymaps 'eglot-mode-map
+    "ff" 'eglot-format)
+  :hook
+  (eglot-mode . eldoc-mode)
+  (before-save . eglot-format))
 
-(use-package rustic
+(use-package rust-mode
   :straight t
-  :mode ("\\.rs\\'" . rustic-mode)
-  :hook (rustic-mode . eglot-ensure))
+  :mode ("\\.rs\\'" . rust-mode)
+  :config
+  (setq-local indent-tabs-mode nil)
+  :hook (rust-mode . eglot-ensure))
 
 (use-package go-mode
   :straight t
@@ -785,11 +785,24 @@
   :straight t
   :mode "\\.nix\\'")
 
+(use-package markdown-mode
+  :straight t
+  :mode (("README\\.md\\'" . gfm-mode)
+         ("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode))
+  :init (setq markdown-command "multimarkdown"))
+
 (use-package dockerfile-mode
   :straight t
   :mode "Dockerfile\\'"
   :hook
   (dockerfile-mode . eglot-ensure))
+
+
+;; The default indentation of 4 is way to much
+(setq sh-basic-offset 2)
+(setq org-src-preserve-indentation nil)
+(setq org-edit-src-content-indentation 0)
 
 ;; Systemd-files
 (add-to-list 'auto-mode-alist '("\\.service\\'" . conf-unix-mode))
@@ -814,7 +827,7 @@
 (global-set-key (kbd "C-0") 'text-scale-adjust)
 
 
-(defhydra hydra-straight-helper (:hint nil)
+(defhydra my/hydra-straight (:hint nil)
   "
 _c_heck all       |_f_etch all     |_m_erge all      |_n_ormalize all   |p_u_sh all
 _C_heck package   |_F_etch package |_M_erge package  |_N_ormlize package|p_U_sh package
@@ -843,12 +856,10 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
   ("e" straight-prune-build)
   ("q" nil))
 
-
 ;; TODO: hydra for window management
 ;; use other-window windmove-left ...
 ;; winner-mode for undo, redo
-(winner-mode 1)
-(defhydra hydra-window (:color amaranth)
+(defhydra my/hydra-window (:color amaranth)
   "Window management"
   ("h" windmove-left "Left" :column "Navigation")
   ("j" windmove-down "Down")
@@ -866,24 +877,26 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
   ("db" kill-this-buffer "Kill")
   ("o" delete-other-windows "Other" :exit t)
   ("q" nil "Exit" :exit t))
-(leader-key "w" '(hydra-window/body :which-key "Windows"))
 
+(add-hook 'window-setup-hook #'winner-mode)
 
 ;; Simulate Tim Popes vim-commentary for Evil
-(evil-define-operator evil-comment-region (start end)
+(evil-define-operator my/evil-comment-region (start end)
   "Comment or uncomment the given region"
   (comment-or-uncomment-region start end))
 
 (general-nmap
-  "gc" (general-key-dispatch 'evil-comment-region
+  "gc" (general-key-dispatch 'my/evil-comment-region
          "c" 'comment-line))
 (general-vmap
-  "gc" 'evil-comment-region)
+  "gc" 'my/evil-comment-region)
 
 
 ;; TODO: use Hydra for some shortcuts
-(leader-key
+(my/leader-key
   "SPC" '(dired :which-key "Directory")
+  "w" '(my/hydra-window/body :which-key "Windows")
+  "s" '(my/hydra-straight/body :which-key "Straight")
   "h" '(:keymap help-map :which-key "Help")
   "b" '(:keymap bookmark-map :which-key "Bookmarks")
   "n"   '(:ignore t :which-key "New")
@@ -891,12 +904,9 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
   "nt" '(term :which-key "Term")
   "j"   '(:ignore t :which-key "Jump")
   "jd" '(dired-jump :which-key "Directory")
-  "jt" '(hydra-jump-tabs/body :which-key "Tabs")
   "q"   '(:ignore t :which-key "Quit")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs")
   "qb" '(kill-this-buffer :which-key "Buffer")
-  "qt" '(tab-close :which-key "Tab")
-  "qw" '(delete-window :which-key "Window")
   "qf" 'suspend-frame)
 
 
@@ -907,33 +917,12 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
 (defalias 'lt 'load-theme)
 
 
-;; Don't split horizontally
-;; (setq split-height-threshold nil)
-;; (setq split-width-threshold 0)
-
-;; TODO: https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Tips-DisplayBuffer-1.org
-;; You can also customize those actions with an alist
-
-;; TODO: org-agenda should use the whole buffer
-;; TODO: help-buffers should not
-;; TODO: mu4e compose should take the whole buffer
-;; TODO: magit should take the whole buffer, commit the half
-;; TODO: prefer vertical over horizontal splits
-;; TODO: not more than two splits (horizontal / vertical) next to each other
-;; (setq display-buffer-base-action
-;;   '((display-buffer-reuse-window
-;;      display-buffer-reuse-mode-window
-;;      display-buffer-same-window
-;;      display-buffer-in-previous-window)
-;;     . ((inhibit-same-window nil)
-;;        (reusable-frames . visible)
-;;        (inhibit-switch-frame nil)
-;;        (window-width nil) ;; don't change size of window
-;;        (window-height nil)))) ;; don't change size of window
-
-
 (load-file "private.el")
 
+(when (file-exists-p custom-file)
+  (load custom-file))
+
+;; set the default-directory to $HOME.
 (cd "~/")
 
 (provide 'init)

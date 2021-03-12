@@ -1,128 +1,53 @@
 * Emacs
-** Install
-   #+begin_src shell
-   git clone --depth=1  https://git.savannah.gnu.org/git/emacs.git -b feature/native-comp
-   cd emacs
-   make
-   ./autogen.sh
-   ./configure \
-       --with-native-compilation \
-       --with-mailutils \
-       --with-gnutls \
-       --with-cairo \
-       --with-harfbuzz \
-       CFLAGS="-O2 -march=znver2 -pipe" \
-       CPPFLAGS="${CFLAGS}"
-   make
-sudo make install
-   #+end_src
-** mu
-   #+begin_src shell
-   git clone https://github.com/djcb/mu.git
-   cd mu
-   ./configure
-   make
-   sudo make install
-   #+end_src
-* Packages
-  Yay:
-  #+begin_src
-  git clone https://aur.archlinux.org/yay.git
-  cd yay
-  makepkg -sirc
-  #+end_src
-
+  This will compile Emacs from source using the native-compilation feature in combination with
+  pgtk-support. This way all Emacs Lisp-files will be compiled to native binaries. Pgtk allows to
+  use Emacs without xwayland by adding native wayland support. Also adds better support for hi-res
+  displays.
   #+begin_src shell
-  sudo pacman -S --needed fzf tree ripgrep git curl wget htop bat
+  git clone --depth 1 https://github.com/flatwhatson/emacs
+  cd emacs
+  ./autogen.sh
+  ./configure \
+      --with-native-compilation \
+      --with-pgtk \
+      --with-mailutils \
+      --without-pop \
+      --with-gnutls \
+      --with-json \
+      --with-cairo \
+      --with-harfbuzz \
+      CFLAGS="-O2 -march=znver2 -pipe" \
+      CPPFLAGS="${CFLAGS}"
+  make NATIVE_FULL_AOT=1 -j$(nproc) # takes 12-15mins (AMD Ryzen 5 3600)
+  sudo make install
   #+end_src
-
+* Mu4e
   #+begin_src shell
-  sudo pacman -S --needed redshift feh ranger pulsemixer
+  git clone https://github.com/djcb/mu.git
+  cd mu
+  ./autogen.sh
+  ./configure
+  make
+  sudo make install
   #+end_src
-
-  Bluetooth:
+* Isync
   #+begin_src shell
-  sudo pacman -S bluez bluez-utils
-  #+end_src
+  # Install isync (aka mbsync)
+  sudo apt install isync
 
-  Audio:
-  #+begin_src shell
-  sudo pacman -S pulseaudio pulseaudio-alsa pulseaudio-jack pulseaudio-equalizer pulseaudio-bluez
-  #+end_src
+  # Sync all accounts
+  mbsync -a
 
-  Enable services:
-  #+begin_src shell
-  systemctl --user enable --now mpd.socket
-  systemctl --user enable --now redshift.service
-  systemctl --user enable --now emacs.service
+  # In case of missing certs:
+  openssl s_client -connect imap.$DOMAIN:143 -showcerts 2>&1 < /dev/null \
+    | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' \
+    | sed -ne '1,/-END CERTIFICATE-/p' > ~/.ssl/certs/imap.$DOMAIN.pem
 
-  systemctl enable --now fstrim.timer
-  #+end_src
-** Xorg
-   #+begin_src shell
-   sudo pacman -S xorg xorg-xinit xclip
-   yay -S i3lock-color
-   #+end_src
+  # same thing for smtp:
+  openssl s_client -connect smtp.$DOMAIN:465 2>/dev/null </dev/null \
+    |  sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' \
+    |  sed -ne '1,/-END CERTIFICATE-/p' > ~/.config/ssl/certs/smtp.$DOMAIN.pem
 
-   Fonts:
-   #+begin_src shell
-   sudo pacman -S noto-fonts noto-fonts-extra noto-fonts-cjk noto-fonts-emoji \
-   ttf-liberation ttf-dejavu ttf-fira-code ttf-jetbrains-mono
-   #+end_src
-** Driver and Gaming
-   Radeon Drivers
-   #+begin_src shell
-   #+end_src
-
-   Steam, etc
-   #+begin_src shell
-   sudo pacman -S steam lutris discord
-   #+end_src
-
-   #+begin_src shell
-   yay -S xow
-   sudo systemctl --now enable xow.service
-   #+end_src
-** Printer
-* Keyring
-  #+begin_src shell
-  sudo pacman -S gnome-keyring libgnome-keyring seahorse
-  #+end_src
-  Content of /etc/pam.d/login:
-
-  #%PAM-1.0
-  auth       required     pam_securetty.so
-  auth       requisite    pam_nologin.so
-  auth       include      system-local-login
-
-  ============================================
-  auth       optional     pam_gnome_keyring.so
-  ============================================
-
-  account    include      system-local-login
-  session    include      system-local-login
-
-  =======================================================
-  session    optional     pam_gnome_keyring.so auto_start
-  =======================================================
-
-  Content of /etc/pam.d/passwd:
-
-  #%PAM-1.0
-
-  #password	required	pam_cracklib.so difok=2 minlen=8 dcredit=2 ocredit=2 retry=3
-  #password	required	pam_unix.so sha512 shadow use_authtok
-  password	required	pam_unix.so sha512 shadow nullok
-
-  ==========================================
-  password	optional	pam_gnome_keyring.so
-  ==========================================
-
-  Add this to ~/.xinitrc:
-
-  eval $(/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
-  export SSH_AUTH_SOCK
-* Default Applications
-  #+begin_src shell
-  xdg-mime default org.pwmt.zathura.desktop application/pdf
+  mu init --maildir=$MAILDIR --my-address=john.doe@gmail.com --my-address=max.mustermann@gmail.com
+  mu index
   #+end_src
