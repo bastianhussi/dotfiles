@@ -51,3 +51,23 @@
   mu init --maildir=$MAILDIR --my-address=john.doe@gmail.com --my-address=max.mustermann@gmail.com
   mu index
   #+end_src
+* Dev
+** Tools
+   #+begin_src shell
+   # Change the watch limit
+   echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+
+   # Set a prefix for user packages
+   npm config set prefix ${XDG_DATA_HOME:-$HOME/.local/share}/npm
+
+   # Install langservers and other development-tools
+   npm i --save -g typescript typescript-language-server \
+       @vue/cli vls \
+       dockerfile-language-server-nodejs \
+       bash-language-server \
+       yaml-language-server \
+       vscode-css-languageservice \
+       vscode-json-languageservice \
+       sql-language-server \
+       prettier eslint
+   #+end_src

@@ -6,9 +6,9 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_DATA_HOME="$HOME/.local/share"
 
-export LESSHISTFILE=- # no less history-file
+export MAILDIR="$XDG_DATA_HOME/mail"
 
-export MAILDIR="$HOME/.mail"
+export LESSHISTFILE=- # no less history-file
 
 [[ -e ~/.profile ]] && emulate sh -c '. ~/.profile'
 
@@ -30,10 +30,10 @@ if [ -d "$GOBIN" ] ; then
 fi
 
 # setup Deno
-# export DENO_INSTALL="$HOME/.local/share/deno"
-# if [ -d "$DENO_INSTALL" ] ; then
-#     PATH="$DENO_INSTALL:$PATH"
-# fi
+export DENO_INSTALL="$HOME/.local/share/deno"
+if [ -d "$DENO_INSTALL" ] ; then
+    PATH="$DENO_INSTALL:$PATH"
+fi
 
 # setup Rust
 export RUSTUP_HOME="$XDG_DATA_HOME"/rustup

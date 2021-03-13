@@ -44,7 +44,8 @@
       user-emacs-directory (expand-file-name "emacs" (or (getenv "XDG_DATA_HOME") "~/.local/share"))
       ;; Save temporary file under /tmp/emacs<uid>
       temporary-file-directory (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)
-      custom-file (expand-file-name "custom.el" user-emacs-directory))
+      ;; Write to /dev/null
+      custom-file null-device)
 
 ;; This directory will not be created automatically
 (make-directory temporary-file-directory t)

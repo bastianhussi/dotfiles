@@ -8,7 +8,8 @@
 (with-eval-after-load 'gnutls
   (eval-when-compile
     (require 'gnutls))
-  (add-to-list 'gnutls-trustfiles "~/.config/ssl/certs/*.pem") ;; Path to self signed certificates.
+  ;; Path to self signed certificates.
+  (add-to-list 'gnutls-trustfiles "~/.config/ssl/certs/*.pem")
   ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
   (setq gnutls-verify-error :trustfiles
         gnutls-min-prime-bits 3072))
@@ -37,16 +38,14 @@
 (fset 'yes-or-no-p 'y-or-n-p)
 
 
-(setq inhibit-splash-screen nil ;; FIXME: gets overridden later
+(setq inhibit-splash-screen t
       inhibit-startup-screen t
       inhibit-startup-message t
-      ;; inhibit-startup-echo-area-message t
       initial-scratch-message nil
-      initial-major-mode 'org-mode)
-
-
-(setq confirm-kill-emacs 'y-or-n-p)
-(setq use-dialog-box nil ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+      initial-major-mode 'org-mode
+      confirm-kill-emacs 'y-or-n-p
+      ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+      use-dialog-box nil
       use-file-dialog nil
       pop-up-windows nil)
 
@@ -56,12 +55,6 @@
 (set-terminal-coding-system 'utf-8)
 (set-keyboard-coding-system 'utf-8)
 (set-language-environment   'utf-8)
-
-;; ;; Underline line at descent position, not baseline position
-;; (setq x-underline-at-descent-line t)
-
-;; ;; No ugly button for checkboxes
-;; (setq widget-image-enable nil)
 
 
 (defun my/set-font-faces ()
@@ -86,11 +79,6 @@
   :straight '(:host github :repo "mickeynp/ligature.el")
   :commands global-ligature-mode
   :config
-  ;; Enable the "www" ligature in every possible major mode
-  (ligature-set-ligatures 't '("www"))
-  ;; Enable traditional ligature support in eww-mode, if the
-  ;; `variable-pitch' face supports it
-  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
   (ligature-set-ligatures
    'prog-mode '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
                 ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
@@ -103,14 +91,15 @@
                 "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
                 "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))
   ;; Enables ligature checks globally in all buffers.
-  :hook
-  (window-setup . global-ligature-mode))
+  :hook (window-setup . global-ligature-mode))
 
 
 ;; Don't show a backslash when wrapping a line
 (set-display-table-slot standard-display-table 'wrap ?\ )
 
-(setq-default cursor-in-non-selected-windows nil ; Hide the cursor in inactive windows
+
+;; Hide the cursor in inactive windows
+(setq-default cursor-in-non-selected-windows nil
               fill-column 99
               indent-tabs-mode nil
               tab-width 4)
@@ -127,11 +116,11 @@
 
 
 ;; Prefer the encrypted authinfo-file
-(setq auth-sources '((:source "~/.authinfo.gpg")
+(setq epa-file-cache-passphrase-for-symmetric-encryption t
+      epa-file-select-keys nil
+      auth-sources '((:source "~/.authinfo.gpg")
                      (:source "~/.authinfo")))
 
-(setq epa-file-cache-passphrase-for-symmetric-encryption t
-      epa-file-select-keys nil)
 
 (setq large-file-warning-threshold nil
       find-file-visit-truename t
@@ -153,7 +142,6 @@
       ;; Prevent issues with build-watchers
       create-lockfiles nil)
 
-(global-auto-revert-mode 1)
 
 ;; Setup the colorscheme and add a nice looking modeline
 (use-package doom-themes
@@ -185,23 +173,20 @@
   :custom-face
   (mode-line ((t (:height 0.90))))
   (mode-line-inactive ((t (:height 0.80))))
-  :hook
-  (window-setup . doom-modeline-mode))
+  :hook (window-setup . doom-modeline-mode))
 
 
 (use-package display-line-numbers
   :commands display-line-numbers-mode
   :custom
   (display-line-numbers-type 'relative)
-  :hook
-  ((text-mode prog-mode) . display-line-numbers-mode))
+  :hook ((text-mode prog-mode) . display-line-numbers-mode))
 
 ;; Highlight the current line.
 (use-package hl-line
   :if (display-graphic-p)
   :commands hl-line-mode
-  :hook
-  ((text-mode prog-mode) . hl-line-mode))
+  :hook ((text-mode prog-mode) . hl-line-mode))
 
 ;; Display keywords like TODO, NOTE, FIXME in different colors.
 (use-package hl-todo
@@ -216,17 +201,14 @@
      ("REVIEW"     font-lock-keyword-face bold)
      ("NOTE"       success bold)
      ("DEPRECATED" font-lock-doc-face bold)))
+  ;; REVIEW: use a hydra instead?
+  :bind
+  (:map hl-todo-mode-map
+        ("C-c n" . hl-todo-next)
+        ("C-c p" . hl-todo-previous)
+        ("C-c o" . hl-todo-occur)
+        ("C-c i" . hl-todo-insert))
   :hook (prog-mode . hl-todo-mode))
-
-
-;; Sadly this is the only way Emacs will respect variables set by zsh.
-;; FIXME: Is there really no other option? Is this still necessary on this Fedora machine?
-(use-package exec-path-from-shell
-  :straight t
-  :custom
-  (exec-path-from-shell-arguments '("-l")) ;; Speed things up a bit
-  :config
-  (exec-path-from-shell-initialize))
 
 
 ;; Vim within Emacs.
@@ -278,7 +260,8 @@
 
 
 (use-package hydra
-  :straight t)
+  :straight t
+  :commands defhydra)
 
 
 ;; Convenient way to manage keybindings
@@ -299,8 +282,7 @@
   :straight t
   :custom
   (which-key-idle-delay 0.50)
-  :hook
-  (window-setup . which-key-mode))
+  :hook (window-setup . which-key-mode))
 
 
 ;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
@@ -332,10 +314,9 @@
 ;; Automatically insert closing pairs like ", ), ], }
 (use-package elec-pair
   :commands electric-pair-mode
-  :custom
-  (electric-pair-preserve-balance nil)
-  :hook
-  (prog-mode . electric-pair-mode))
+  ;; :custom
+  ;; (electric-pair-preserve-balance nil)
+  :hook (prog-mode . electric-pair-mode))
 
 ;; Highlight matching parenthesis
 (use-package paren
@@ -344,8 +325,7 @@
   (show-paren-delay 0.25)
   (show-paren-when-point-inside-paren t)
   (show-paren-when-point-in-periphery t)
-  :hook
-  (prog-mode . show-paren-mode))
+  :hook (prog-mode . show-paren-mode))
 
 ;; Highlight some non printable characters like tabs and trailing spaces
 (use-package whitespace
@@ -353,8 +333,7 @@
   :custom
   (whitespace-line-column fill-column)
   (whitespace-style '(face tabs trailing lines-tail))
-  :hook
-  ((text-mode prog-mode) . whitespace-mode))
+  :hook ((text-mode prog-mode) . whitespace-mode))
 
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
@@ -391,8 +370,8 @@
   :commands counsel-mode
   :bind
   ;; Replace evil search with Swiper
-  ([remap evil-ex-search-forward] . swiper)
-  ([remap evil-ex-search-backward] . swiper-backward)
+  ([remap evil-ex-search-forward] . #'swiper)
+  ([remap evil-ex-search-backward] . #'swiper-backward)
   :general
   (my/leader-key
     "f"  '(:ignore t :which-key "Find")
@@ -402,9 +381,7 @@
     "fj" 'counsel-file-jump
     "fl" 'counsel-locate
     "fr" 'counsel-recentf)
-  ;; Enabling counsel-mode remaps built-in Emacs functions that have counsel replacements
-  :hook
-  (ivy-mode . counsel-mode))
+  :hook (ivy-mode . counsel-mode))
 
 ;; TODO: configure
 (use-package prescient
@@ -453,10 +430,9 @@
     "p" '(:keymap project-prefix-map :which-key "Project")))
 
 
-;; Emacs file manager
-;; TODO: setup keymaps
+;; Emacs build-in file manager
 (use-package dired
-  :commands (dired dired-jump)
+  :commands (dired dired-jump dired-other-tab)
   :custom
   (dired-auto-revert-buffer t)
   (dired-dwim-target t)
@@ -465,10 +441,15 @@
   (dired-recursive-copies 'always)
   :config
   ;; use dired-find-alternate-file instead of dired-find-file to prevent dired to create so many buffers.
-  (put 'dired-find-alternate-file 'disabled nil) ;; Need to be enabled manually
-  (evil-collection-define-key 'normal 'dired-mode-map
-    "h" 'dired-up-directory ;; go up a directory
-    "l" 'dired-find-alternate-file)) ;; go into the selected directory
+  (put 'dired-find-alternate-file 'disabled nil)
+  :bind
+  ([remap dired-find-file] . #'dired-find-alternate-file)
+  :general
+  (general-define-key
+   :states 'normal
+   :keymaps 'dired-mode-map
+   "h" 'dired-up-directory
+   "l" 'dired-find-file))
 
 
 ;; TODO: is there a way to refactor this?
@@ -501,13 +482,6 @@
   :config
   (turn-on-reftex))
 
-;; https://joostkremers.github.io/ebib/ebib-manual.html
-(use-package ebib
-  :straight t
-  :after latex
-  :custom
-  (ebib-bibtex-dialect 'Biber))
-
 
 ;; A major mode for convenient plain text markup — and much more.
 ;; TODO: https://www.youtube.com/watch?v=PNE-mgkZ6HM
@@ -516,6 +490,8 @@
   :commands (org-mode org-agenda)
   ;; TODO: implement these on my own https://github.com/edwtjo/evil-org-mode
   :custom
+  (org-src-preserve-indentation nil)
+  (org-edit-src-content-indentation 0)
   (org-directory "~/Nextcloud/Notes/")
   (org-log-done 'time) ;; Add timestamp whenever task is finished
   (org-log-into-drawer t)
@@ -523,23 +499,22 @@
   (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
   (org-agenda-start-with-log-mode t)
   (org-agenda-window-setup 'other-tab) ;; Open org-agenda in a new tab.
-  :config
-  ;; =M-x customize-group RET org-appearance RET=
-  ;; =M-x customize-group RET org-faces RET=
-  (set-face-attribute 'org-block nil :inherit 'fixed-pitch)
-  (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
-  (set-face-attribute 'org-formula nil :inherit 'fixed-pitch)
-  (set-face-attribute 'org-code nil :inherit '(shadow fixed-pitch))
-  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
-  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
-  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
-  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch)
   :general
   ;; Only show these bindings when in org-mode
   (my/leader-key
     "o"   '(:ignore t :which-key "Org")
     "oa" 'org-agenda))
 
+
+(defun exec-path-from-shell ()
+  "Ensure environment variables are the same as in the user's shell."
+  (interactive)
+  ;; Get the value of the PATH-variable and split the string at the ':'-character.
+  (let ((path-from-shell (shell-command-to-string "$SHELL -lic 'echo $PATH'")))
+    (setq exec-path (split-string path-from-shell path-separator))))
+
+;; need to defer calling this function: Running it can take up to 0.1 seconds.
+(add-hook 'after-init-hook #'exec-path-from-shell)
 
 (defvar my/term-history-size 5000)
 
@@ -554,8 +529,6 @@
 (use-package vterm
   :straight t
   :commands vterm
-  :bind
-  ([remap term] . vterm)
   :custom
   (vterm-kill-buffer-on-exit t)
   (vterm-max-scrollback my/term-history-size)
@@ -563,6 +536,8 @@
   (defun my/vterm-adjust-evil-cursor ()
     (setq-local evil-insert-state-cursor 'box
                 evil-move-cursor-back nil))
+  :bind
+  ([remap term] . #'vterm)
   :hook
   (vterm-mode . my/vterm-adjust-evil-cursor))
 
@@ -611,10 +586,10 @@
                       (company-dabbrev-code company-keywords company-files company-dabbrev)))
   (company-dabbrev-downcase nil)
   (company-dabbrev-ignore-case nil)
-  (company-dabbrev-other-buffers nil)
+  ;; (company-dabbrev-other-buffers nil)
   (company-idle-delay 0)
   (company-minimum-prefix-length 1)
-  (company-require-match nil)
+  ;; (company-require-match nil)
   (company-selection-wrap-around t)
   (company-tooltip-width-grow-only t)
   :config
@@ -666,12 +641,22 @@
 
 
 ;; TODO: setup eldoc (build-in)
+;; REVIEW: add hooks for eglot-ensure in here of for each package exclusively?
 ;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
   :straight t
   :commands eglot-ensure
   :config
   (setq eglot-stay-out-of '("company"))
+  (setq eglot-server-programs
+      (append '((yaml-mode . ("yaml-language-server" "--stdio"))
+                (dockerfile-mode . ("docker-langserver" "--stdio"))
+                ;; FIXME: doesn't work!
+                (css-mode . ("css-language-server" "--stdio"))
+                (vue-mode . ("vls" "--stdio"))
+                ;; TODO: setup eglot-ensure for this one
+                (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
+              eglot-server-programs))
   :general
   (general-define-key
    :states 'normal
@@ -706,6 +691,18 @@
   (eglot-mode . eldoc-mode)
   (before-save . eglot-format))
 
+
+(use-package prettier
+  :straight t
+  :commands prettier-mode
+  :custom
+  (prettier-inline-errors-flag t)
+  (prettier-pre-warm 'none)
+  :hook
+  ((sgml-mode css-mode js-mode typescript-mode vue-mode)
+   . prettier-mode))
+
+
 (use-package rust-mode
   :straight t
   :mode ("\\.rs\\'" . rust-mode)
@@ -728,32 +725,32 @@
   :hook (python-mode . pyvenv-mode))
 
 (use-package js
-  :mode ("\\.js\\'" . js-mode)
+  :commands js-mode
   :config
   (setq-default js-indent-level 2)
   :hook (js-mode . eglot-ensure))
 
 (use-package typescript-mode
   :straight t
-  :mode "\\.ts\\'"
+  :mode "\\.tsx?\\'"
   :config
   (setq-default typescript-indent-level 2)
   :hook (typescript-mode . eglot-ensure))
 
-
 (use-package web-mode
   :straight t
-  :mode ("\\.vue\\'" "\\.jsx\\'" "\\.tsx\\'")
+  :commands web-mode
   :custom
-  (web-mode-code-indent-offset 2)
-  (web-mode-enable-auto-opening nil)
-  (web-mode-enable-auto-pairing nil)
-  (web-mode-enable-auto-quoting nil)
-  (web-mode-markup-indent-offset 2)
-  (web-mode-enable-auto-indentation nil)
-  :hook
-  (web-mode . sgml-electric-tag-pair-mode)
-  (web-mode . eglot-ensure))
+  (web-mode-code-indent-offset 2))
+
+(define-derived-mode vue-mode
+  web-mode "Vue.js"
+  "Major mode for vue-files."
+  ;; TODO: set buffer-local variables here
+  )
+
+(add-to-list 'auto-mode-alist '("\\.vue\\'" . vue-mode))
+(add-hook 'vue-mode-hook #'eglot-ensure)
 
 (use-package sgml-mode
   :mode "\\.html?\\'"
@@ -785,6 +782,17 @@
   :straight t
   :mode "\\.nix\\'")
 
+(use-package sh-script
+  :commands sh-mode
+  ;; TODO: setup indentation
+  :hook
+  (sh-mode . eglot-ensure))
+
+(use-package sql
+  :commands sql-mode
+  :hook
+  (sql-mode . eglot-ensure))
+
 (use-package markdown-mode
   :straight t
   :mode (("README\\.md\\'" . gfm-mode)
@@ -798,24 +806,20 @@
   :hook
   (dockerfile-mode . eglot-ensure))
 
-
-;; The default indentation of 4 is way to much
-(setq sh-basic-offset 2)
-(setq org-src-preserve-indentation nil)
-(setq org-edit-src-content-indentation 0)
-
 ;; Systemd-files
-(add-to-list 'auto-mode-alist '("\\.service\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.timer\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.target\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.mount\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.automount\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.slice\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.socket\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.path\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.netdev\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.network\\'" . conf-unix-mode))
-(add-to-list 'auto-mode-alist '("\\.link\\'" . conf-unix-mode))
+(setq auto-mode-alist
+      (append '(("\\.service\\'" . conf-unix-mode)
+                ("\\.timer\\'" . conf-unix-mode)
+                ("\\.target\\'" . conf-unix-mode)
+                ("\\.mount\\'" . conf-unix-mode)
+                ("\\.automount\\'" . conf-unix-mode)
+                ("\\.slice\\'" . conf-unix-mode)
+                ("\\.socket\\'" . conf-unix-mode)
+                ("\\.path\\'" . conf-unix-mode)
+                ("\\.netdev\\'" . conf-unix-mode)
+                ("\\.network\\'" . conf-unix-mode)
+                ("\\.link\\'" . conf-unix-mode))
+              auto-mode-alist))
 
 
 ;; Use the escape-key to quit prompts
@@ -878,7 +882,6 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
   ("o" delete-other-windows "Other" :exit t)
   ("q" nil "Exit" :exit t))
 
-(add-hook 'window-setup-hook #'winner-mode)
 
 ;; Simulate Tim Popes vim-commentary for Evil
 (evil-define-operator my/evil-comment-region (start end)
@@ -912,15 +915,20 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
 
 (defalias 'eb 'eval-buffer)
 (defalias 'kb 'kill-buffer)
-(defalias 'dr 'desktop-remove)
+(defalias 'dd 'my/desktop-delete)
+(defalias 'dr 'my/desktop-restore-if-exists)
 (defalias 'cp 'check-parens)
 (defalias 'lt 'load-theme)
 
 
-(load-file "private.el")
+(add-hook 'after-init #'global-auto-revert-mode)
+;; Enable folding by using hide-show-mode
+(add-hook 'prog-mode-hook #'hs-minor-mode)
+;; winner-mode is used in my/hydra-window
+(add-hook 'window-setup-hook #'winner-mode)
 
-(when (file-exists-p custom-file)
-  (load custom-file))
+
+(load-file "private.el")
 
 ;; set the default-directory to $HOME.
 (cd "~/")
