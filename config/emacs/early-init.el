@@ -61,7 +61,8 @@
       ;; Do not report native compile warnings
       comp-async-report-warnings-errors nil)
 
-;; Change the directory where the  natively compiled *.eln files will be cached
+;; Change the directory where the native compiled *.eln files will be cached
+;; FIXME: the is still a directory created inside the config-dir
 (when (boundp 'comp-eln-load-path)
   (setcar comp-eln-load-path
           (expand-file-name "cache/eln-cache/" user-emacs-directory)))
