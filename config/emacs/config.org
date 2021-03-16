@@ -47,8 +47,7 @@
       confirm-kill-emacs 'y-or-n-p
       ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
       use-dialog-box nil
-      use-file-dialog nil
-      pop-up-windows nil)
+      use-file-dialog nil)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -291,24 +290,68 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(use-package hydra
-  :straight t
-  :commands defhydra)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
 ;; Convenient way to manage keybindings
 (use-package general
   :straight t
   :config
   (general-evil-setup t)
   ;; Don't use isearch
-  (general-setq evil-search-module 'evil-search)
-  ;; NOTE: This overrides SPC in every keymap
-  (general-create-definer my/leader-key
-    :states 'normal
-    :keymaps 'override
-    :prefix "SPC"))
+  (general-setq evil-search-module 'evil-search))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(defconst my/leader-key "SPC")
+(defconst my/leader-fallback-key "C-SPC")
+
+;; NOTE: This overrides SPC in every keymap except insert
+;; TODO: understand how this works? This is just trail and error for now
+(general-create-definer my/leader-def
+  :states '(normal insert visual emacs)
+  :keymaps 'override
+  :prefix my/leader-key ;; normal-state
+  :non-normal-prefix my/leader-fallback-key) ;; insert-state
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; Shift selected text without losing the selection.
+;; The same "issue" exists in pain vim.
+(general-vmap ">" 'my/evil-shift-right)
+(general-vmap "<" 'my/evil-shift-left)
+(general-vmap "<tab>" 'my/evil-shift-right)
+(general-vmap "<backtab>" 'my/evil-shift-left)
+
+(defun my/evil-shift-right ()
+  "Shift the selected text to the right without losing the selection."
+  (interactive)
+  (evil-shift-right (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+
+(defun my/evil-shift-left ()
+  "Shift the selected text to the left without losing the selection."
+  (interactive)
+  (evil-shift-left (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; Simulate Tim Popes vim-commentary for Evil
+(evil-define-operator my/evil-comment-region (start end)
+  "Comment or uncomment the given region"
+  (comment-or-uncomment-region start end))
+
+(general-nmap
+  "gc" (general-key-dispatch 'my/evil-comment-region
+         "c" 'comment-line))
+(general-vmap
+  "gc" 'my/evil-comment-region)
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package hydra
+  :straight t
+  :commands defhydra)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -334,8 +377,6 @@
   (defhydra my/hydra-tab-bar (:color amaranth)
     "Tab Bar Operations"
     ("t" tab-new "Create a new tab" :column "Creation")
-    ("d" dired-other-tab "Open Dired in another tab")
-    ("f" find-file-other-tab "Find file in another tab")
     ("0" tab-close "Close current tab")
     ("m" tab-move "Move current tab" :column "Management")
     ("r" tab-rename "Rename Tab")
@@ -344,7 +385,7 @@
     ("h" tab-previous "Previous Tab")
     ("q" nil "Exit" :exit t))
   :general
-  (my/leader-key "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
+  (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -403,9 +444,8 @@
      (t . ivy--regex-plus)))
   :bind
   (:map ivy-minibuffer-map
-        ("RET" . ivy-done)
-        ("TAB" . ivy-next-line)
-        ("C-V" . yank) ;; insert with Ctrl+Shift+v just like in a terminal
+        ("<return>" . ivy-done)
+        ("<tab>" . ivy-next-line)
         ("<backtab>" . ivy-previous-line))
   :hook (after-init . ivy-mode))
 #+end_src
@@ -419,7 +459,8 @@
   ([remap evil-ex-search-forward] . #'swiper)
   ([remap evil-ex-search-backward] . #'swiper-backward)
   :general
-  (my/leader-key
+  (my/leader-def
+    "SPC" 'counsel-M-x
     "f"  '(:ignore t :which-key "Find")
     "ff" 'counsel-fzf
     "fg" 'counsel-rg
@@ -475,15 +516,16 @@
 
 #+begin_src emacs-lisp :tangle yes
 (use-package project
+  :defer 2
   :general
-  (my/leader-key
+  (my/leader-def
     "p" '(:keymap project-prefix-map :which-key "Project")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; Emacs build-in file manager
 (use-package dired
-  :commands (dired dired-jump dired-other-tab)
+  :commands (dired dired-jump)
   :custom
   (dired-auto-revert-buffer t)
   (dired-dwim-target t)
@@ -496,11 +538,14 @@
   :bind
   ([remap dired-find-file] . #'dired-find-alternate-file)
   :general
-  (general-define-key
-   :states 'normal
-   :keymaps 'dired-mode-map
-   "h" 'dired-up-directory
-   "l" 'dired-find-file))
+  (:states 'normal
+           :keymaps 'dired-mode-map
+           "h" 'dired-up-directory
+           "l" 'dired-find-file)
+  (my/leader-def
+    "d" '(:ignore t :which-key "Dired")
+    "dd" 'dired
+    "dj" 'dired-jump))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -510,9 +555,16 @@
   :commands LaTeX-mode
   :mode ("\\.tex\\'" . LaTeX-mode)
   :config
-  (flyspell-mode 1)
-  (LaTeX-math-mode 1)
-  (reftex-mode 1))
+  (LaTeX-math-mode 1))
+
+(use-package reftex
+  :straight auctex
+  :commands reftex-mode
+  :custom
+  (reftex-plug-into-AUCTeX t)
+  (reftex-use-external-file-finders t)
+  :hook
+  (LaTeX-mode . reftex-mode))
 
 (use-package tex
   :after latex
@@ -523,16 +575,8 @@
   :config
   (setq-default TeX-master nil)
   :hook
-  (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
-
-(use-package reftex
-  :straight auctex
-  :after latex
-  :custom
-  (reftex-plug-into-AUCTeX t)
-  (reftex-use-external-file-finders t)
-  :config
-  (turn-on-reftex))
+  (TeX-after-compilation-finished-functions
+   . TeX-revert-document-buffer))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -547,7 +591,6 @@
   (org-edit-src-content-indentation 0)
   ;; for the setting above to work, this needs to be nil
   (org-src-preserve-indentation nil)
-
   (org-directory "~/Nextcloud/Notes/")
   (org-log-done 'time) ;; Add timestamp whenever task is finished
   (org-log-into-drawer t)
@@ -560,7 +603,7 @@
   (add-to-list 'org-structure-template-alist '("py" . "src python"))
   :general
   ;; Only show these bindings when in org-mode
-  (my/leader-key
+  (my/leader-def
     "o"   '(:ignore t :which-key "Org")
     "oa" 'org-agenda)
   :hook
@@ -623,8 +666,9 @@
 ;; A Git Porcelain inside Emacs.
 (use-package magit
   :straight t
+  :defer 2
   :general
-  (my/leader-key
+  (my/leader-def
     "g"   '(:ignore t :which-key "Git")
     "gs"  'magit-status
     "gd"  'magit-diff-unstaged
@@ -660,24 +704,20 @@
   :straight t
   :commands global-company-mode
   :custom
-  (company-backends '((company-capf :with company-yasnippet)
-                      (company-dabbrev-code company-keywords company-files company-dabbrev)))
+  ;; (company-backends '((company-capf :with company-yasnippet)
+  ;;                     (company-dabbrev-code company-keywords company-files company-dabbrev)))
   (company-dabbrev-downcase nil)
   (company-dabbrev-ignore-case nil)
-  ;; (company-dabbrev-other-buffers nil)
-  (company-idle-delay 0)
-  (company-minimum-prefix-length 1)
-  ;; (company-require-match nil)
   (company-selection-wrap-around t)
   (company-tooltip-width-grow-only t)
+  (company-minimum-prefix-length 1)
+  (company-idle-delay 0)
   :config
-  (setq tab-always-indent 'complete
-        completion-cycle-threshold 5)
-  (add-to-list 'completion-styles 'initials t)
+  (setq tab-always-indent 'complete)
   :bind
   (:map company-active-map
-        ("RET" . company-complete-selection)
-        ("TAB" . company-select-next)
+        ("<return>" . company-complete-selection)
+        ("<tab>" . company-select-next)
         ("<backtab>" . company-select-previous))
   :hook (after-init . global-company-mode))
 #+end_src
@@ -717,7 +757,7 @@
     ("G" (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
     ("q" nil))
   :general
-  (my/leader-key "e" '(my/hydra-flymake/body :which-key "Errors"))
+  (my/leader-def "e" '(my/hydra-flymake/body :which-key "Errors"))
   :hook (prog-mode . flymake-mode))
 #+end_src
 
@@ -740,17 +780,19 @@
                 (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
   :general
-  (general-define-key
-   :states 'normal
-   :keymaps 'eglot-mode-map
-   "<f2>" 'eglot-rename
-   "gd" 'xref-find-definitions
-   "gr" 'xref-find-references
-   "gD" 'eglot-find-declaration
-   "gi" 'eglot-find-implementation
-   "gt" 'eglot-find-typeDefinition
-   "gh" 'eldoc)
-  (my/leader-key
+  (:states 'normal
+           :keymaps 'eglot-mode-map
+           "<f2>" 'eglot-rename
+           "gd" 'xref-find-definitions
+           "gr" 'xref-find-references
+           "gD" 'eglot-find-declaration
+           "gi" 'eglot-find-implementation
+           "gt" 'eglot-find-typeDefinition
+           "gh" 'eldoc)
+  (:states 'visual
+           :keymaps 'eglot-mode-map
+           "ff" 'eglot-format)
+  (my/leader-def
    :states 'normal
    :keymaps 'eglot-mode-map
    "c"   '(:ignore t :which-key "Code")
@@ -766,9 +808,6 @@
    "cs"  '(:ignore t :which-key "Server")
    "css" 'eglot-shutdown
    "csr" 'eglot-reconnect)
-  (general-vmap
-    :keymaps 'eglot-mode-map
-    "ff" 'eglot-format)
   :hook
   (eglot-mode . eldoc-mode)
   (before-save . eglot-format))
@@ -947,7 +986,11 @@
 
 #+begin_src emacs-lisp :tangle yes
 ;; Use the escape-key to quit prompts
-(define-key key-translation-map (kbd "ESC") (kbd "C-g"))
+(define-key key-translation-map (kbd "<escape>") (kbd "C-g"))
+
+;; ;; Need to tell evil to use C-g for quiting insert state, since ESC cant be produced
+(define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+(define-key evil-normal-state-map (kbd "C-g") 'evil-force-normal-state)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -958,34 +1001,22 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(defhydra my/hydra-straight (:hint nil)
-  "
-_c_heck all       |_f_etch all     |_m_erge all      |_n_ormalize all   |p_u_sh all
-_C_heck package   |_F_etch package |_M_erge package  |_N_ormlize package|p_U_sh package
-----------------^^+--------------^^+---------------^^+----------------^^+------------||_q_uit||
-_r_ebuild all     |_p_ull all      |_v_ersions freeze|_w_atcher start   |_g_et recipe
-_R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_ build"
-  ("c" straight-check-all)
-  ("C" straight-check-package)
-  ("r" straight-rebuild-all)
-  ("R" straight-rebuild-package)
-  ("f" straight-fetch-all)
-  ("F" straight-fetch-package)
-  ("p" straight-pull-all)
-  ("P" straight-pull-package)
-  ("m" straight-merge-all)
-  ("M" straight-merge-package)
-  ("n" straight-normalize-all)
-  ("N" straight-normalize-package)
-  ("u" straight-push-all)
-  ("U" straight-push-package)
-  ("v" straight-freeze-versions)
-  ("V" straight-thaw-versions)
-  ("w" straight-watcher-start)
-  ("W" straight-watcher-quit)
-  ("g" straight-get-recipe)
-  ("e" straight-prune-build)
-  ("q" nil))
+;; https://www.gnu.org/software/emacs/manual/html_mono/elisp.html#Buffer-Display-Action-Alists
+(setq display-buffer-base-action
+  '((display-buffer-reuse-window
+     ;; if there already is a window with a buffer of the same mode use this one.
+     ;; The types of modes to look at in this evaluation are provider with the mode key in the
+     ;; alist below
+     display-buffer-reuse-mode-window
+     ;; display the buffer in a window where it was deplayed before
+     display-buffer-in-previous-window
+     display-buffer-use-some-window)
+    . (
+       ;; alow using the same window. This is the last resort: display-buffer-same window is the
+       ;; laste item in the action function list.
+       (inhibit-same-window . t)
+       (resuable-frames . nil)
+       (mode . (help-mode magit-mode eldoc-mode)))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1011,42 +1042,19 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
   ("<up>" enlarge-window "Grow (v)")
   ("u" winner-undo "Undo" :column "Action")
   ("r" winner-redo "Redo")
-  ("dw" delete-window "Window" :column "Delete")
-  ("db" kill-this-buffer "Kill")
+  ("0" delete-window "Window")
   ("o" delete-other-windows "Other" :exit t)
-  ("q" nil "Exit" :exit t))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Simulate Tim Popes vim-commentary for Evil
-(evil-define-operator my/evil-comment-region (start end)
-  "Comment or uncomment the given region"
-  (comment-or-uncomment-region start end))
-
-(general-nmap
-  "gc" (general-key-dispatch 'my/evil-comment-region
-         "c" 'comment-line))
-(general-vmap
-  "gc" 'my/evil-comment-region)
+  ("q" nil "Exit" :column "Quit" :exit t))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; TODO: use Hydra for some shortcuts
-(my/leader-key
-  "SPC" '(dired :which-key "Directory")
+(my/leader-def
   "w" '(my/hydra-window/body :which-key "Windows")
-  "s" '(my/hydra-straight/body :which-key "Straight")
   "h" '(:keymap help-map :which-key "Help")
   "b" '(:keymap bookmark-map :which-key "Bookmarks")
-  "n"   '(:ignore t :which-key "New")
-  "ne" '(eshell :which-key "Eshell")
-  "nt" '(term :which-key "Term")
-  "j"   '(:ignore t :which-key "Jump")
-  "jd" '(dired-jump :which-key "Directory")
   "q"   '(:ignore t :which-key "Quit")
-  "qq" '(save-buffers-kill-terminal :which-key "Emacs")
-  "qb" '(kill-this-buffer :which-key "Buffer")
-  "qf" 'suspend-frame)
+  "qq" '(save-buffers-kill-terminal :which-key "Emacs"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1056,27 +1064,6 @@ _R_ebuild package |_P_ull package  |_V_ersions thaw  |_W_atcher quit    |prun_e_
 (defalias 'dr 'my/desktop-restore-if-exists)
 (defalias 'cp 'check-parens)
 (defalias 'lt 'load-theme)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Don't split horizontally
-;; (setq split-height-threshold nil)
-;; (setq split-width-threshold 0)
-
-;; TODO: https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Tips-DisplayBuffer-1.org
-;; You can also customize those actions with an alist
-
-;; TODO: org-agenda should use the whole buffer
-;; TODO: help-buffers should not
-;; TODO: mu4e compose should take the whole buffer
-;; TODO: magit should take the whole buffer, commit the half
-;; TODO: prefer vertical over horizontal splits
-;; TODO: not more than two splits (horizontal / vertical) next to each other
-(setq display-buffer-base-action
-      '((display-buffer-reuse-window
-         display-buffer-reuse-mode-window
-         display-buffer-same-window
-         display-buffer-in-previous-window)))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
