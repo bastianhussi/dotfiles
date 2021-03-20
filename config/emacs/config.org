@@ -1,3 +1,6 @@
+https://github.com/daedreth/UncleDavesEmacs/
+https://github.com/howardabrams/dot-files/
+
 #+begin_src emacs-lisp :tangle yes
 (setq user-full-name "Bastian Hussi")
 #+end_src
@@ -10,7 +13,7 @@
   (add-to-list 'gnutls-trustfiles "~/.config/ssl/certs/*.pem")
   ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
   (setq gnutls-verify-error :trustfiles
-        gnutls-min-prime-bits 3072))
+        gnutls-min-prime-bits 4096))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -105,9 +108,10 @@
 #+begin_src emacs-lisp :tangle yes
 ;; Hide the cursor in inactive windows
 (setq-default cursor-in-non-selected-windows nil
-              fill-column 99
+              fill-column 80
               indent-tabs-mode nil
-              tab-width 4)
+              tab-width 4
+              tab-always-indent 'complete)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -135,6 +139,7 @@
   ;; Any value other than t or nil will prevent Emacs from asking for
   ;; recipients when encrypting files
   (epa-file-select-keys 1)
+  (epg-pinentry-mode 'loopback) ;; use the minibuffer instead of external program
   :hook (after-init . epa-file-enable))
 
 ;; Prefer the encrypted authinfo-file
@@ -144,7 +149,7 @@
 
 
 #+begin_src emacs-lisp :tangle yes
-(setq large-file-warning-threshold nil
+(setq large-file-warning-threshold nil ;; Don't warn for large files
       find-file-visit-truename t
       backup-by-copying t
       delete-old-versions t
@@ -159,7 +164,7 @@
 (setq auto-save-list-file-prefix
       temporary-file-directory)
 
-(setq vc-follow-symlinks t
+(setq vc-follow-symlinks t ;; Don't warn for following symlinked files
       delete-by-moving-to-trash t
       ;; Prevent issues with build-watchers
       create-lockfiles nil)
@@ -252,8 +257,8 @@
   (evil-want-fine-undo t) ;; actions are undone in several steps
   (evil-undo-system 'undo-redo)
   (evil-move-beyond-eol t)
-  (evil-vsplit-window-right t)
-  (evil-split-window-below t)
+  (evil-vsplit-window-right t) ;; split to the right not to the left
+  (evil-split-window-below t) ;; split below not above
   ;; You can't escape vim
   (evil-toggle-key "")
   :config
@@ -268,6 +273,7 @@
   (evil-collection-init))
 
 ;; Tim Popes surround plugin for Emacs.
+;; https://github.com/emacs-evil/evil-surround
 (use-package evil-surround
   :straight t
   :after evil
@@ -275,6 +281,7 @@
   (global-evil-surround-mode 1))
 
 ;; Vim-Snipe plugin for Emacs.
+;; https://github.com/hlissner/evil-snipe
 (use-package evil-snipe
   :straight t
   :after evil
@@ -283,7 +290,7 @@
   (evil-snipe-repeat-scope 'whole-visible)
   (evil-snipe-spillover-scope 'whole-buffer)
   :config
-  ;; see: https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
+  ;; https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
   (push 'magit-mode evil-snipe-disabled-modes)
   (evil-snipe-mode 1)
   (evil-snipe-override-mode 1))
@@ -359,7 +366,7 @@
 (use-package which-key
   :straight t
   :custom
-  (which-key-idle-delay 0.50)
+  (which-key-idle-delay 0.75)
   :hook (window-setup . which-key-mode))
 #+end_src
 
@@ -369,7 +376,7 @@
 (use-package tab-bar
   :commands tab-bar-mode
   :custom
-  (tab-bar-close-button-show nil)
+  (tab-bar-close-button-show nil) ;; Don't show buttons
   (tab-bar-new-button-show nil)
   (tab-bar-new-tab-choice "*scratch*") ;; New tabs will show the scratch-buffer
   (tab-bar-new-tab-to 'rightmost)  ;; Always add new tabs to the rightmost position
@@ -393,7 +400,7 @@
 (use-package elec-pair
   :commands electric-pair-mode
   :custom
-  (electric-pair-preserve-balance t) ;; NOTE: This is the default value
+  (electric-pair-preserve-balance nil) ;; NOTE: This is the default value
   :hook (prog-mode . electric-pair-mode))
 #+end_src
 
@@ -413,16 +420,54 @@
 (use-package whitespace
   :commands whitespace-mode
   :custom
-  (whitespace-line-column fill-column)
-  (whitespace-style '(face tabs trailing lines-tail))
-  :hook ((text-mode prog-mode) . whitespace-mode))
+  (whitespace-line-column nil) ;; use the value of `fill-column`
+  ;; https://github.com/hlissner/doom-emacs/issues/109
+  (whitespace-display-mappings
+   '((tab-mark ?\t [?» ?\t])
+     (newline-mark 10 [?¬ 10])
+     (space-mark 32 [?·] [46])))
+  (whitespace-style '(face spaces space-mark tabs tab-mark space-before-tab space-after-tab
+                           newline newline-mark trailing lines-tail))
+  :config
+  (defun my/whitespace-cleanup-mode ()
+    "Cleanup trailing whitespaces before saving a buffer."
+    (add-hook 'before-save-hook #'whitespace-cleanup nil 'local))
+  :hook
+  (prog-mode . whitespace-mode)
+  (whitespace-mode . my/whitespace-cleanup-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
-  :hook ((text-mode prog-mode) . auto-fill-mode))
+  :custom
+  (kill-ring-max 100) ;; Default is 60
+  :hook (prog-mode . auto-fill-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; https://oremacs.com/2015/01/17/setting-up-ediff/
+(use-package ediff
+  :custom
+  (ediff-window-setup-function 'ediff-setup-windows-plain)
+  (ediff-split-window-function 'split-window-horizontally)
+  (ediff-diff-options "-w") ;; ignore whitespaces
+  :config
+  (ediff-setup-keymap)
+  (add-hook 'ediff-after-quit-hook-internal #'winner-undo)
+  :hook
+  (ediff-mode . winner-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package prescient
+  :straight t
+  :commands prescient-persist-mode
+  :custom
+  (prescient-history-length 10)
+  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
+  (prescient-filter-method '(literal regexp fuzzy)))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -439,9 +484,12 @@
   (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
   ;; Do not close the minibuffer with delete
   (ivy-on-del-error-function nil)
-  (ivy-re-builders-alist
-   '((read-file-name-internal . ivy--regex-fuzzy)
-     (t . ivy--regex-plus)))
+  :config
+  ;; use fuzzy matching everywhere except for swiper
+  (setq ivy-re-builders-alist
+        '((swiper      . ivy--regex-ignore-order)
+          (counsel-M-x . ivy--regex-plus)
+          (t           . ivy--regex-fuzzy)))
   :bind
   (:map ivy-minibuffer-map
         ("<return>" . ivy-done)
@@ -472,38 +520,21 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; TODO: configure
-(use-package prescient
-  :straight t
-  :after (ivy-prescient company-prescient)
-  :custom
-  (prescient-history-length 3)
-  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
-  (prescient-filter-method '(literal regexp fuzzy))
-  :config
-  (prescient-persist-mode 1))
-
-;; TODO: improve the loading of these packages (are hooks a solution?)
 (use-package ivy-prescient
   :straight t
-  :after counsel
+  :commands ivy-prescient-mode
   :custom
   (ivy-prescient-enable-filtering nil) ;; Let ivy handle the filtering
   (ivy-prescient-retain-classic-highlighting t) ;; Keep classic highlighting
   :config
-  (ivy-prescient-mode 1))
-
-;; TODO: move to company-mode
-(use-package company-prescient
-  :straight t
-  :after company
-  :config
-  (company-prescient-mode 1))
+  (prescient-persist-mode 1)
+  :hook (ivy-mode . ivy-prescient-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (use-package recentf
-  :defer 10
+  :defer 10 ;; defer loading by 10s
+  ;; ivy might call this function before this package will load
   :commands recentf-mode
   :custom
   (recentf-max-menu-items 25)
@@ -516,7 +547,7 @@
 
 #+begin_src emacs-lisp :tangle yes
 (use-package project
-  :defer 2
+  :defer t
   :general
   (my/leader-def
     "p" '(:keymap project-prefix-map :which-key "Project")))
@@ -583,6 +614,8 @@
 ;; A major mode for convenient plain text markup - and much more.
 (use-package org
   :straight t
+  ;; defer the loading of org-mode possible. If any of the commands below
+  ;; get run befor this time load org-mode imediatly
   :commands (org-mode org-agenda)
   :custom
   ;; use tab like in the language major mode
@@ -612,22 +645,20 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(defun exec-path-from-shell ()
+(defun my/exec-path-from-shell ()
   "Ensure environment variables are the same as in the user's shell."
-  (interactive)
   ;; Get the value of the PATH-variable and split the string at the ':'-character.
   (let ((path-from-shell (shell-command-to-string "$SHELL -lic 'echo $PATH'")))
     (setq exec-path (split-string path-from-shell path-separator))))
 
-;; need to defer calling this function: Running it can take up to 0.1 seconds.
-(add-hook 'after-init-hook #'exec-path-from-shell)
+;; Defer running this function: This can take up to 0.1 seconds.
+(add-hook 'after-init-hook #'my/exec-path-from-shell)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(require 'ansi-color)
-
 (defun colorize-compilation-buffer ()
   "Colorize the compilation buffer and get escapes parsed."
+  (require 'ansi-color)
   (ansi-color-apply-on-region compilation-filter-start (point-max)))
 
 (add-hook 'compilation-filter-hook #'colorize-compilation-buffer)
@@ -650,10 +681,11 @@
   :straight t
   :commands vterm
   :custom
-  (vterm-kill-buffer-on-exit t)
+  (vterm-kill-buffer-on-exit t) ;; kill the buffer when quitting the session
   (vterm-max-scrollback my/term-history-size)
   :config
   (defun my/vterm-adjust-evil-cursor ()
+    "Prevent evil-mode from changing the appearance of the curosor inside different modes."
     (setq-local evil-insert-state-cursor 'box
                 evil-move-cursor-back nil))
   :bind
@@ -666,7 +698,7 @@
 ;; A Git Porcelain inside Emacs.
 (use-package magit
   :straight t
-  :defer 2
+  :defer t
   :general
   (my/leader-def
     "g"   '(:ignore t :which-key "Git")
@@ -684,42 +716,85 @@
     "gr"  'magit-rebase))
 #+end_src
 
-
 #+begin_src emacs-lisp :tangle yes
-;; REVIEW: Global really necessary?
-(use-package yasnippet
+(use-package git-gutter
   :straight t
-  :commands yas-global-mode
-  :custom (yas-prompt-functions '(yas-completing-prompt))
-  :hook (after-init . yas-global-mode))
-
-(use-package yasnippet-snippets
-  :straight t
-  :after yasnippet)
+  :commands git-gutter-mode
+  :custom
+  (git-gutter:update-interval 3)
+  (git-gutter:modified-sign "~")
+  (git-gutter:added-sign "+")
+  (git-gutter:deleted-sign "-")
+  ;; :bind
+  ;; (:map git-gutter-map
+  ;;       ("C-x v ="   . git-gutter:popup-hunk)
+  ;;       ("C-x p"     . git-gutter:previous-hunk)
+  ;;       ("C-x n"     . git-gutter:next-hunk)
+  ;;       ("C-x v s"   . git-gutter:stage-hunk)
+  ;;       ("C-x v r"   . git-gutter:revert-hunk)
+  ;;       ("C-x v SPC" . git-gutter:mark-hunk))
+  :hook (prog-mode . git-gutter-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; REVIEW: is global-company-mode necessary?
 (use-package company
   :straight t
-  :commands global-company-mode
+  :commands company-mode
   :custom
-  ;; (company-backends '((company-capf :with company-yasnippet)
-  ;;                     (company-dabbrev-code company-keywords company-files company-dabbrev)))
+  (company-backends
+   '((company-capf :with company-yasnippet)
+     (company-dabbrev-code
+      company-keywords
+      company-files
+      company-dabbrev)))
+  (company-require-match 'never)
   (company-dabbrev-downcase nil)
   (company-dabbrev-ignore-case nil)
   (company-selection-wrap-around t)
   (company-tooltip-width-grow-only t)
   (company-minimum-prefix-length 1)
   (company-idle-delay 0)
-  :config
-  (setq tab-always-indent 'complete)
   :bind
   (:map company-active-map
-        ("<return>" . company-complete-selection)
+        ;; ("<return>" . company-complete-selection)
         ("<tab>" . company-select-next)
         ("<backtab>" . company-select-previous))
-  :hook (after-init . global-company-mode))
+  :hook
+  (prog-mode . company-mode)
+  (company-mode . company-tng-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; NOTE: luckily this package also prevents whitespace-style beeing shown inside company.
+;; (use-package company-box
+;;   :straight t
+;;   :hook (company-mode . company-box-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package company-prescient
+  :straight t
+  :commands company-prescient-mode
+  :config
+  (prescient-persist-mode 1)
+  :hook (company-mode . company-prescient-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; https://github.com/joaotavora/yasnippet
+(use-package yasnippet
+  :straight t
+  :commands yas-minor-mode
+  :custom
+  (yas-prompt-functions '(yas-completing-prompt))
+  :config
+  (yas-reload-all)
+  :hook (prog-mode . yas-minor-mode))
+
+;; https://github.com/AndreaCrotti/yasnippet-snippets
+(use-package yasnippet-snippets
+  :straight t
+  :after yasnippet)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -770,15 +845,19 @@
   :commands eglot-ensure
   :config
   (setq read-process-output-max (* 5 1024 1024)) ;; 5mb
-  (setq eglot-stay-out-of '("company"))
+  (add-to-list 'eglot-stay-out-of 'company)
   (setq eglot-server-programs
       (append '((yaml-mode . ("yaml-language-server" "--stdio"))
                 (dockerfile-mode . ("docker-langserver" "--stdio"))
                 ;; FIXME: doesn't work!
+                ((c++-mode c-mode) "clangd")
                 (vue-mode . ("vls" "--stdio"))
                 ;; TODO: setup eglot-ensure for this one
                 (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
+  (defun my/eglot-format-buffer-before-save ()
+    "Format the buffer with eglot before saving it"
+    (add-hook 'before-save-hook #'eglot-format-buffer nil 'local))
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
@@ -798,19 +877,19 @@
    "c"   '(:ignore t :which-key "Code")
    "ca"  '(:ignore t :which-key "Actions")
    "caa" 'eglot-code-actions
-   "caq" 'eglot-code-action-quickfix
-   "cae" 'eglot-code-action-extract
    "cai" 'eglot-code-action-inline
    "car" 'eglot-code-action-rewrite
-   "cao" 'eglot-code-action-organize-imports
-   "cf" 'eglot-format-buffer
-   "cr" 'eglot-rename
+   "co"  'eglot-code-action-organize-imports
+   "cq"  'eglot-code-action-quickfix
+   "ce"  'eglot-code-action-extract
+   "cf"  'eglot-format-buffer
+   "cr"  'eglot-rename
    "cs"  '(:ignore t :which-key "Server")
    "css" 'eglot-shutdown
    "csr" 'eglot-reconnect)
   :hook
   (eglot-mode . eldoc-mode)
-  (before-save . eglot-format))
+  (eglot-mode . my/eglot-format-buffer-before-save))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -818,20 +897,38 @@
   :straight t
   :commands prettier-mode
   :custom
-  (prettier-inline-errors-flag t)
-  (prettier-pre-warm 'none)
+  (prettier-pre-warm 'none) ;; Speed up loading files
   :hook
-  ((sgml-mode css-mode js-mode typescript-mode vue-mode)
+  ((sgml-mode css-mode js-mode typescript-mode vue-mode yaml-mode json-mode)
    . prettier-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+;; https://github.com/rust-lang/rust-mode
 (use-package rust-mode
   :straight t
-  :mode ("\\.rs\\'" . rust-mode)
+  :mode "\\.rs\\'"
   :config
-  (setq-local indent-tabs-mode nil)
-  :hook (rust-mode . eglot-ensure))
+  (defun my/rust-adjust-fill-column ()
+    "Adjust the fill-column variable for rust-mode."
+    (setq-local fill-column 99
+                indent-tabs-mode nil))
+  :bind
+  (:map rust-mode-map
+        ("C-c C-r" . rust-run)
+        ("C-c C-t" . rust-test)
+        ("C-c C-c" . rust-check)
+        ("C-c C-v" . rust-run-clippy)
+        ("C-c C-b" . rust-compile))
+  :hook
+  (rust-mode . eglot-ensure)
+  (rust-mode . my/rust-adjust-fill-column))
+
+;; https://github.com/kwrooijen/cargo.el
+(use-package cargo
+  :straight t
+  :commands cargo-minor-mode
+  :hook (rust-mode . cargo-minor-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -839,25 +936,32 @@
   :straight t
   :mode "\\.go\\'"
   :config
-  (setq-local indent-tabs-mode nil)
+  (setq-local indent-tabs-mode t
+              tab-width 2)
   :hook (go-mode . eglot-ensure))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (use-package python
-  :mode ("\\.py\\'" . python-mode)
-  :hook (python-mode . eglot-ensure))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package python
-  :mode ("\\.py\\'" . python-mode)
+  :commands python-mode
+  :custom
+  (python-shell-interpreter "python3")
   :hook (python-mode . eglot-ensure))
 
 (use-package pyvenv
   :straight t
   :commands pyvenv-mode
   :hook (python-mode . pyvenv-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package c-mode
+  :commands c-mode
+  :hook (c-mode . eglot-ensure))
+
+(use-package c++-mode
+  :commands c++-mode
+  :hook (c++-mode . eglot-ensure))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -986,11 +1090,13 @@
 
 #+begin_src emacs-lisp :tangle yes
 ;; Use the escape-key to quit prompts
-(define-key key-translation-map (kbd "<escape>") (kbd "C-g"))
+;; (define-key key-translation-map (kbd "<escape>") (kbd "C-g"))
 
-;; ;; Need to tell evil to use C-g for quiting insert state, since ESC cant be produced
-(define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
-(define-key evil-normal-state-map (kbd "C-g") 'evil-force-normal-state)
+;; Need to tell evil to use C-g for quiting insert state, since ESC cant be produced
+;; (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+;; (define-key evil-normal-state-map (kbd "C-g") 'evil-force-normal-state)
+
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1001,6 +1107,12 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+;; split only if the original window has at least that many lines
+(setq split-height-threshold 50
+      split-width-threshold 125)
+
+;; TODO: prevent Emacs from creating new frames
+
 ;; https://www.gnu.org/software/emacs/manual/html_mono/elisp.html#Buffer-Display-Action-Alists
 (setq display-buffer-base-action
   '((display-buffer-reuse-window
@@ -1010,13 +1122,15 @@
      display-buffer-reuse-mode-window
      ;; display the buffer in a window where it was deplayed before
      display-buffer-in-previous-window
-     display-buffer-use-some-window)
-    . (
-       ;; alow using the same window. This is the last resort: display-buffer-same window is the
-       ;; laste item in the action function list.
-       (inhibit-same-window . t)
+     display-buffer-use-some-window
+     display-buffer-same-window)
+     ;; display-buffer-in-side-window)
+    . ((inhibit-same-window . t) ;; allow using the same window.
        (resuable-frames . nil)
-       (mode . (help-mode magit-mode eldoc-mode)))))
+       (preserve-size (t . t)) ;; preserve the width and height of the chosen buffer (must already exist)
+       (inhibit-switch-frame t) ;; prevents another frame from being raised or selected
+       ;; display-buffer-reuse-mode-window
+       (mode . (help-mode magit-mode eldoc-mode ediff-mode)))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1047,6 +1161,14 @@
   ("q" nil "Exit" :column "Quit" :exit t))
 #+end_src
 
+
+#+begin_src emacs-lisp :tangle yes
+(defun my/kill-all-buffers ()
+  "Kill all buffers without regard for their origin."
+  (interactive)
+  (mapc 'kill-buffer (buffer-list)))
+#+end_src
+
 #+begin_src emacs-lisp :tangle yes
 ;; TODO: use Hydra for some shortcuts
 (my/leader-def
@@ -1054,6 +1176,8 @@
   "h" '(:keymap help-map :which-key "Help")
   "b" '(:keymap bookmark-map :which-key "Bookmarks")
   "q"   '(:ignore t :which-key "Quit")
+  "qb" '(kill-this-buffer :which-key "This Buffer")
+  "qa" '(my/kill-all-buffers :which-key "All Buffers")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs"))
 #+end_src
 
