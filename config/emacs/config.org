@@ -1,5 +1,7 @@
-https://github.com/daedreth/UncleDavesEmacs/
-https://github.com/howardabrams/dot-files/
+[[https://github.com/daedreth/UncleDavesEmacs/][Uncle Dave]]
+[[https://github.com/howardabrams/dot-files/][Howard Abrams]]
+[[https://github.com/angrybacon/dotemacs][Angrybacon]]
+[[https://config.daviwil.com/emacs][David Wilson]]
 
 #+begin_src emacs-lisp :tangle yes
 (setq user-full-name "Bastian Hussi")
@@ -10,7 +12,9 @@ https://github.com/howardabrams/dot-files/
   (eval-when-compile
     (require 'gnutls))
   ;; Path to self signed certificates.
-  (add-to-list 'gnutls-trustfiles "~/.config/ssl/certs/*.pem")
+  (add-to-list 'gnutls-trustfiles
+               (expand-file-name "ssl/certs/*.pem"
+                                 (or (getenv "XDG_CONFIG_HOME") "~/.config")))
   ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
   (setq gnutls-verify-error :trustfiles
         gnutls-min-prime-bits 4096))
@@ -54,6 +58,10 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+(setq-default warning-minimum-level :error)
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
 (prefer-coding-system       'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-terminal-coding-system 'utf-8)
@@ -62,21 +70,35 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(defun my/set-font-faces ()
-  "Setting up fonts + emoji support."
-  (defvar my/font-size 160)
-  (set-face-attribute 'default nil :font "Fira Code Retina" :height my/font-size)
-  (set-face-attribute 'fixed-pitch nil :font "Cascadia Code" :height my/font-size)
-  (set-face-attribute 'variable-pitch nil :font "Cantarell" :height my/font-size :weight 'regular)
-  ;; By default, Emacs will try to use the default face’s font for
-  ;; displaying symbol and punctuation characters, disregarding the
-  ;; fontsets, if the default font can display the character. Prevent this behavior:
-  (setq use-default-font-for-symbols nil)
-  ;; Colorful emojis
-  (set-fontset-font t 'symbol "Noto Color Emoji")
-  (set-fontset-font t 'symbol "Symbola" nil 'append))
+(use-package faces
+  :commands my/faces-fontset-emojis
+  :init
+  (setq use-default-font-for-symbols nil) ;; Prevent the default font from displaying symbols
+  :custom-face
+  (variable-pitch ((t (:family "Cantarell"      :height 150))))
+  (fixed-pitch    ((t (:family "Fira Code"      :height 160))))
+  (default        ((t (:family "JetBrains Mono" :height 160))))
+  :config
+  (defun my/faces-fontset-emojis ()
+    "Enable colorful emojis."
+    (set-fontset-font t 'symbol "Noto Color Emoji")
+    (set-fontset-font t 'symbol "Symbola" nil 'append))
+  :hook
+  (window-setup            . my/faces-fontset-emojis)
+  (server-after-make-frame . my/faces-fontset-emojis))
+#+end_src
 
-(add-hook 'window-setup-hook #'my/set-font-faces)
+#+begin_src emacs-lisp :tangle yes
+(use-package font-lock
+  :defer t
+  :custom-face
+  (font-lock-constant-face ((t (:weight bold))))
+  (font-lock-comment-face  ((t (:slant italic))))
+  (font-lock-string-face   ((t (:slant italic))))
+  :config
+  ;; Increase font-lock speed. Otherwise this may take some time.
+  (setq jit-lock-stealth-time 0.10
+        jit-lock-stealth-nice 0.00))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -101,8 +123,11 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; Don't show a backslash when wrapping a line
-(set-display-table-slot standard-display-table 'wrap ?\ )
+
+;; Make Emacs treat underscore as a word character
+(modify-syntax-entry ?_ "w")
+;; Same for single quotation mark
+(modify-syntax-entry ?' "w")
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -111,149 +136,143 @@ https://github.com/howardabrams/dot-files/
               fill-column 80
               indent-tabs-mode nil
               tab-width 4
-              tab-always-indent 'complete)
+              tab-always-indent nil)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; Amount to scroll windows by when spinning the mouse wheel
-(setq mouse-wheel-scroll-amount '(3 ((shift) . 1))
-      ;; Do not increase scrolling by moving the wheel faster
-      mouse-wheel-progressive-speed nil
-      mouse-wheel-follow-mouse t)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; (setq ring-bell-function 'ignore)
-
-;; flash the frame to represent a bell.
-(when (display-graphic-p)
- (setq visible-bell t))
+(use-package mwheel
+  :defer t
+  :custom
+  ;; Amount to scroll windows by when spinning the mouse wheel
+  (mouse-wheel-scroll-amount '(3 ((shift) . 1)))
+  ;; Do not increase scrolling by moving the wheel faster
+  (mouse-wheel-progressive-speed nil)
+  (mouse-wheel-follow-mouse t))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (use-package epa-file
   :commands epa-file-enable
   :custom
-  ;; cache passphrase for symmetric encryption.
+   ;; cache passphrase for symmetric encryption.
   (epa-file-cache-passphrase-for-symmetric-encryption t)
   ;; Any value other than t or nil will prevent Emacs from asking for
   ;; recipients when encrypting files
   (epa-file-select-keys 1)
-  (epg-pinentry-mode 'loopback) ;; use the minibuffer instead of external program
+  :config
+  ;; use the minibuffer instead of external program
+  (setq epg-pinentry-mode 'loopback)
+  ;; Prefer the encrypted authinfo-file
+  (setq auth-sources '((:source "~/.authinfo.gpg")
+                       (:source "~/.authinfo")))
+  ;; ensure this is enabled (is by default)
   :hook (after-init . epa-file-enable))
-
-;; Prefer the encrypted authinfo-file
-(setq auth-sources '((:source "~/.authinfo.gpg")
-                     (:source "~/.authinfo")))
-#+end_src
-
-
-#+begin_src emacs-lisp :tangle yes
-(setq large-file-warning-threshold nil ;; Don't warn for large files
-      find-file-visit-truename t
-      backup-by-copying t
-      delete-old-versions t
-      kept-new-versions 6
-      kept-old-versions 2
-      version-control t
-      backup-directory-alist
-      `((".*" . ,temporary-file-directory))
-      auto-save-file-name-transforms
-      `((".*" ,temporary-file-directory t)))
-
-(setq auto-save-list-file-prefix
-      temporary-file-directory)
-
-(setq vc-follow-symlinks t ;; Don't warn for following symlinked files
-      delete-by-moving-to-trash t
-      ;; Prevent issues with build-watchers
-      create-lockfiles nil)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; Setup the colorscheme and add a nice looking modeline
-(use-package doom-themes
-  :if (display-graphic-p)
+(use-package files
+  :defer t
+  :custom
+  (large-file-warning-threshold nil) ;; Don't warn for large files
+  (backup-by-copying t)
+  (delete-old-versions t) ;; Delete old versions without confirmation
+  (kept-new-versions 1)
+  (kept-old-versions 1)
+  (version-control t) ;; use vc unconditionally to backup files
+  (backup-directory-alist
+   `((".*" . ,temporary-file-directory)))
+  (auto-save-file-name-transforms
+   `((".*" ,temporary-file-directory t)))
+  :config
+  (setq auto-save-list-file-prefix temporary-file-directory
+        ;; Move files to thrash instead of deleting them right away
+        delete-by-moving-to-trash t
+        ;; Prevent issues with build-watchers
+        create-lockfiles nil))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(setq ring-bell-function 'ignore)
+
+(use-package nord-theme
   :straight t
   :init
-  ;; Allow loading themes without a warning.
-  (setq custom-safe-themes t)
-  (load-theme 'doom-dracula)
-  (doom-themes-org-config)
-  (doom-themes-visual-bell-config))
-
-(use-package all-the-icons
-  :if (display-graphic-p)
-  :straight t
-  :commands all-the-icons-install-fonts
-  :init
-  ;; Install the required fonts if this has not already happend.
-  (unless (find-font (font-spec :name "all-the-icons"))
-    (all-the-icons-install-fonts t)))
-
-(use-package doom-modeline
-  :if (display-graphic-p)
-  :straight t
-  :commands doom-modeline-mode
+  (setq custom-safe-themes t) ;; All themes are considered safe to load
+  :config
+  (load-theme 'nord)
   :custom
-  ;; Default value of 25 is too small
-  (doom-modeline-height 40)
-  ;; Shorten the filepath
-  (doom-modeline-buffer-file-name-style 'truncate-except-project)
-  ;; Use the build in project-package
-  (doom-modeline-project-detection 'project)
-  :custom-face
-  (mode-line ((t (:height 0.90))))
-  (mode-line-inactive ((t (:height 0.80))))
-  ;; Defer loading the modeline
-  :hook (window-setup . doom-modeline-mode))
+  (nord-region-highlight 'frost))
+
+;; Load custom theme
+(push (expand-file-name "lisp" default-directory) load-path)
+
+;; (use-package nord-theme
+;;  :load-path "~/.config/emacs/"
+;;  :init
+;;  (setq custom-safe-themes t) ;; All themes are considered safe to load
+;;  :config
+;;  (load-theme 'nord))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(use-package display-line-numbers
-  :commands display-line-numbers-mode
-  :custom
-  (display-line-numbers-type 'relative)
-  :hook ((text-mode prog-mode) . display-line-numbers-mode))
+;; Proudly stolen from https://github.com/rougier/elegant-emacs
+(defun my/mode-line-render (left right)
+  (let* ((available-width (- (window-width) (length left))))
+    (format (format "%%s %%%ds" available-width) left right)))
 
-;; Highlight the current line.
-(use-package hl-line
-  :commands hl-line-mode
-  :hook ((text-mode prog-mode) . hl-line-mode))
-#+end_src
+(defconst my/mode-line-separator (propertize " " 'face '(:inherit nil)))
 
-#+begin_src emacs-lisp :tangle yes
-;; Display keywords like TODO, NOTE, FIXME in different colors.
-(use-package hl-todo
-  :straight t
-  :commands hl-todo-mode
-  :custom
-  (hl-todo-highlight-punctuation ":")
-  (hl-todo-keyword-faces
-   '(("TODO"       warning bold)
-     ("FIXME"      error bold)
-     ("HACK"       font-lock-constant-face bold)
-     ("REVIEW"     font-lock-keyword-face bold)
-     ("NOTE"       success bold)
-     ("DEPRECATED" font-lock-doc-face bold)))
-  ;; REVIEW: use a hydra instead?
-  :bind
-  (:map hl-todo-mode-map
-        ("C-c n" . hl-todo-next)
-        ("C-c p" . hl-todo-previous)
-        ("C-c o" . hl-todo-occur)
-        ("C-c i" . hl-todo-insert))
-  :hook (prog-mode . hl-todo-mode))
+;; REVIEW: defer this? (use window-setup-hook)
+;; TODO: split this into functions and move this into its own file
+(setq-default
+ mode-line-format
+ '((:eval
+    (my/mode-line-render
+     ;; Left hand side
+     (format-mode-line
+      (list
+       my/mode-line-separator
+       '(:eval (cond
+                ((eq evil-state 'normal) (propertize "<N>" 'face '(:foreground "green")))
+                ((eq evil-state 'insert) (propertize "<I>" 'face '(:foreground "red")))
+                ((eq evil-state 'visual) (propertize "<V>" 'face '(:foreground "yellow")))
+                ((eq evil-state 'motion) (propertize "<M>" 'face '(:foreground "orange")))
+                (t "<*>")))
+       my/mode-line-separator
+       ;; Highlight the file name if there are unsaved changes
+       (if (and buffer-file-name (buffer-modified-p))
+           (propertize "%b" 'face '(:foreground "red"))
+         "%b")
+       my/mode-line-separator
+       ;; Mode
+       (propertize "(%m)" 'face '(:inherit font-lock-comment-face))
+       ))
+     ;; Right hand side
+     (format-mode-line
+      (list
+       '(vc-mode vc-mode)
+       my/mode-line-separator
+       "%4l:%C"
+       my/mode-line-separator
+       "%p%%"
+       my/mode-line-separator
+       ))))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; Vim within Emacs.
 (use-package evil
   :straight t
+  :init
+  (evil-mode +1)
   :custom
   (evil-want-keybinding nil)
   (evil-want-integration t)
   (evil-want-C-i-jump t) ;; jump forward in the jump-list
+  (evil-want-C-w-delete t) ;; default
+  (evil-want-C-d-scroll nil)
+  (evil-want-C-w-delete t) ;; default
+  (evil-disable-insert-state-bindings nil) ;; default
   (evil-want-fine-undo t) ;; actions are undone in several steps
   (evil-undo-system 'undo-redo)
   (evil-move-beyond-eol t)
@@ -263,7 +282,14 @@ https://github.com/howardabrams/dot-files/
   (evil-toggle-key "")
   :config
   (setq-default evil-shift-width tab-width)
-  (evil-mode 1))
+  :bind
+  ([remap isearch-forward]  . #'evil-ex-search-forward)
+  ([remap isearch-backward] . #'evil-ex-search-backward)
+  (:map evil-insert-state-map
+        ("C-y" . evil-paste-after) ;; same as in minibuffer
+        ("C-g" . evil-normal-state))
+  (:map evil-normal-state-map
+        ("C-g" . evil-force-normal-state)))
 
 ;; Useful vim keybindings for popular modes in Emacs.
 (use-package evil-collection
@@ -278,7 +304,7 @@ https://github.com/howardabrams/dot-files/
   :straight t
   :after evil
   :config
-  (global-evil-surround-mode 1))
+  (global-evil-surround-mode +1))
 
 ;; Vim-Snipe plugin for Emacs.
 ;; https://github.com/hlissner/evil-snipe
@@ -292,8 +318,8 @@ https://github.com/howardabrams/dot-files/
   :config
   ;; https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
   (push 'magit-mode evil-snipe-disabled-modes)
-  (evil-snipe-mode 1)
-  (evil-snipe-override-mode 1))
+  (evil-snipe-mode +1)
+  (evil-snipe-override-mode +1))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -313,7 +339,7 @@ https://github.com/howardabrams/dot-files/
 ;; NOTE: This overrides SPC in every keymap except insert
 ;; TODO: understand how this works? This is just trail and error for now
 (general-create-definer my/leader-def
-  :states '(normal insert visual emacs)
+  :states '(normal insert visual motion emacs)
   :keymaps 'override
   :prefix my/leader-key ;; normal-state
   :non-normal-prefix my/leader-fallback-key) ;; insert-state
@@ -321,11 +347,13 @@ https://github.com/howardabrams/dot-files/
 
 #+begin_src emacs-lisp :tangle yes
 ;; Shift selected text without losing the selection.
-;; The same "issue" exists in pain vim.
-(general-vmap ">" 'my/evil-shift-right)
-(general-vmap "<" 'my/evil-shift-left)
-(general-vmap "<tab>" 'my/evil-shift-right)
+;; The same "issue" exists in plain vim.
+(general-vmap ">"         'my/evil-shift-right)
+(general-vmap "<"         'my/evil-shift-left)
+(general-vmap "<tab>"     'my/evil-shift-right)
+(general-vmap "TAB"       'my/evil-shift-right)
 (general-vmap "<backtab>" 'my/evil-shift-left)
+(general-vmap "S-TAB"     'my/evil-shift-left)
 
 (defun my/evil-shift-right ()
   "Shift the selected text to the right without losing the selection."
@@ -356,9 +384,22 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+;; This key key-chord will escape the insert state by pressing "j" twice
+;; within a very short period of time.
+(general-imap "j"
+              (general-key-dispatch 'self-insert-command
+                ;; Only works with second key is pressed within this time-span
+                ;; Otherwise just insert the character.
+                :timeout 0.20
+                "j" 'evil-normal-state))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
 (use-package hydra
   :straight t
   :commands defhydra)
+
+;; REVIEW: map all hydras here?
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -367,7 +408,42 @@ https://github.com/howardabrams/dot-files/
   :straight t
   :custom
   (which-key-idle-delay 0.75)
+  (which-key-idle-secondary-delay 0.00)
+  (which-key-show-remaining-keys nil)
   :hook (window-setup . which-key-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package display-line-numbers
+  :commands display-line-numbers-mode
+  :custom
+  (display-line-numbers-type 'relative)
+  :hook ((text-mode prog-mode) . display-line-numbers-mode))
+
+;; Highlight the current line.
+(use-package hl-line
+  :commands hl-line-mode
+  :custom
+  ;; Only hightlight the current line in the active window
+  (hl-line-sticky-flag nil)
+  :hook ((text-mode prog-mode) . hl-line-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; SEE: https://www.gnu.org/software/emacs/manual/html_node/emacs/Font-Lock.html
+(defun my/hl-todo ()
+  "Highlight TODO and similar keywords."
+  (font-lock-add-keywords
+   nil '(("\\(\\<\\(TODO\\)\\>[:]*\\)"       1 '((t :foreground "yellow" :weight bold)) t)
+         ("\\(\\<\\(FIXME\\)\\>[:]*\\)"      1 '((t :foreground "red" :weight bold)) t)
+         ("\\(\\<\\(HACK\\)\\>[:]*\\)"       1 '((t :foreground "red" :weight bold)) t)
+         ("\\(\\<\\(DEBUG\\)\\>[:]*\\)"      1 '((t :foreground "red" :weight bold)) t)
+         ("\\(\\<\\(NOTE\\)\\>[:]*\\)"       1 '((t :foreground "green" :weight bold)) t)
+         ("\\(\\<\\(SEE\\)\\>[:]*\\)"        1 '((t :foreground "green" :weight bold)) t)
+         ("\\(\\<\\(REVIEW\\)\\>[:]*\\)"     1 '((t :foreground "blue" :weight bold)) t)
+         ("\\(\\<\\(DEPRECATED\\)\\>[:]*\\)" 1 '((t :foreground "blue" :weight bold)) t))))
+
+(add-hook 'prog-mode-hook #'my/hl-todo)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -383,16 +459,30 @@ https://github.com/howardabrams/dot-files/
   :config
   (defhydra my/hydra-tab-bar (:color amaranth)
     "Tab Bar Operations"
-    ("t" tab-new "Create a new tab" :column "Creation")
-    ("0" tab-close "Close current tab")
-    ("m" tab-move "Move current tab" :column "Management")
-    ("r" tab-rename "Rename Tab")
+    ("t"   tab-new "Create a new tab" :column "Action")
+    ("0"   tab-close "Close current tab")
+    ("o"   tab-close-other "Other" :exit t)
+    ("m"   tab-move "Move current tab" :column "Modification")
+    ("r"   tab-rename "Rename Tab")
     ("RET" tab-bar-select-tab-by-name "Select tab by name" :column "Navigation")
-    ("l" tab-next "Next Tab")
-    ("h" tab-previous "Previous Tab")
-    ("q" nil "Exit" :exit t))
+    ("l"   tab-next "Next Tab")
+    ("h"   tab-previous "Previous Tab")
+    ("q"   nil "Quit" :exit t))
   :general
   (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+;; TODO: setup eldoc
+
+;; navigate back and forwards with </>-keys
+(use-package help
+  :defer t
+  :custom
+  (help-window-select t) ;; Always focus the help buffer
+  :general
+  (my/leader-def
+  "h"  '(:keymap help-map :which-key "Help")))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -433,7 +523,7 @@ https://github.com/howardabrams/dot-files/
     "Cleanup trailing whitespaces before saving a buffer."
     (add-hook 'before-save-hook #'whitespace-cleanup nil 'local))
   :hook
-  (prog-mode . whitespace-mode)
+  (prog-mode       . whitespace-mode)
   (whitespace-mode . my/whitespace-cleanup-mode))
 #+end_src
 
@@ -441,13 +531,20 @@ https://github.com/howardabrams/dot-files/
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
   :commands auto-fill-mode
+  :init
+  (global-visual-line-mode 1) ;; Soft wrap in all buffers
   :custom
   (kill-ring-max 100) ;; Default is 60
-  :hook (prog-mode . auto-fill-mode))
+  :config
+  ;; Don't show a backslash when wrapping a line
+  (set-display-table-slot standard-display-table 'wrap ?\ )
+  :hook
+  (prog-mode . auto-fill-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; https://oremacs.com/2015/01/17/setting-up-ediff/
+;; TODO: defer loading
 (use-package ediff
   :custom
   (ediff-window-setup-function 'ediff-setup-windows-plain)
@@ -455,19 +552,7 @@ https://github.com/howardabrams/dot-files/
   (ediff-diff-options "-w") ;; ignore whitespaces
   :config
   (ediff-setup-keymap)
-  (add-hook 'ediff-after-quit-hook-internal #'winner-undo)
-  :hook
-  (ediff-mode . winner-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package prescient
-  :straight t
-  :commands prescient-persist-mode
-  :custom
-  (prescient-history-length 10)
-  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
-  (prescient-filter-method '(literal regexp fuzzy)))
+  (add-hook 'ediff-after-quit-hook-internal #'winner-undo))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -487,48 +572,59 @@ https://github.com/howardabrams/dot-files/
   :config
   ;; use fuzzy matching everywhere except for swiper
   (setq ivy-re-builders-alist
-        '((swiper      . ivy--regex-ignore-order)
-          (counsel-M-x . ivy--regex-plus)
-          (t           . ivy--regex-fuzzy)))
+        '((swiper . ivy--regex-ignore-order)
+          (t      . ivy--regex-plus)))
   :bind
   (:map ivy-minibuffer-map
-        ("<return>" . ivy-done)
-        ("<tab>" . ivy-next-line)
-        ("<backtab>" . ivy-previous-line))
+        ("<return>"  . ivy-done)
+        ("RET"       . ivy-done)
+        ("<tab>"     . ivy-next-line)
+        ("TAB"       . ivy-next-line)
+        ("<backtab>" . ivy-previous-line)
+        ("S-TAB"     . ivy-previous-line))
   :hook (after-init . ivy-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package prescient
+  :straight t
+  :commands prescient-persist-mode
+  :custom
+  (prescient-sort-length-enable nil)
+  (prescient-history-length 25))
+
+(use-package ivy-prescient
+  :straight t
+  :after counsel
+  :custom
+  (ivy-prescient-enable-filtering nil)
+  (ivy-prescient-retain-classic-highlighting t)
+  :config
+  (ivy-prescient-mode +1)
+  (prescient-persist-mode +1))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (use-package counsel
   :straight t
   :commands counsel-mode
+  :config
+  (setenv "FZF_DEFAULT_COMMAND" "rg --files --hidden --follow --glob '!.git'")
   :bind
   ;; Replace evil search with Swiper
-  ([remap evil-ex-search-forward] . #'swiper)
+  ([remap evil-ex-search-forward]  . #'swiper)
   ([remap evil-ex-search-backward] . #'swiper-backward)
   :general
   (my/leader-def
-    "SPC" 'counsel-M-x
-    "f"  '(:ignore t :which-key "Find")
-    "ff" 'counsel-fzf
-    "fg" 'counsel-rg
-    "fb" 'counsel-switch-buffer
-    "fj" 'counsel-file-jump
-    "fl" 'counsel-locate
-    "fr" 'counsel-recentf)
+    "SPC" '(counsel-M-x :which-key "M-x")
+    "f"   '(:ignore t :which-key "Find")
+    "ff"  'counsel-fzf
+    "fg"  'counsel-rg
+    "fb"  'counsel-switch-buffer
+    "fj"  'counsel-file-jump
+    "fl"  'counsel-locate
+    "fr"  'counsel-recentf)
   :hook (ivy-mode . counsel-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package ivy-prescient
-  :straight t
-  :commands ivy-prescient-mode
-  :custom
-  (ivy-prescient-enable-filtering nil) ;; Let ivy handle the filtering
-  (ivy-prescient-retain-classic-highlighting t) ;; Keep classic highlighting
-  :config
-  (prescient-persist-mode 1)
-  :hook (ivy-mode . ivy-prescient-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -540,7 +636,7 @@ https://github.com/howardabrams/dot-files/
   (recentf-max-menu-items 25)
   (recentf-max-saved-items 25)
   :config
-  (recentf-mode 1)
+  (recentf-mode +1)
   ;; Save every 15 minutes
   (run-at-time nil (* 15 60) 'recentf-save-list))
 #+end_src
@@ -566,39 +662,74 @@ https://github.com/howardabrams/dot-files/
   :config
   ;; use dired-find-alternate-file instead of dired-find-file to prevent dired to create so many buffers.
   (put 'dired-find-alternate-file 'disabled nil)
+  ;; A hydra for conveniently using dired commands
+  (defhydra my/hydra-dired (:hint nil :color pink)
+    "Dired commands"
+    ("(" dired-hide-details-mode "Detail" :column "View")
+    (")" dired-omit-mode "Omit")
+    ("?" dired-summary "Summary")
+    ("g" revert-buffer "Refresh")
+    ("=" dired-diff "Diff")
+    ("v" dired-view-file "File")
+    ("m" dired-mark "Mark" :column "Marking")
+    ("t" dired-toggle-marks "Toggle")
+    ("u" dired-unmark "Unmark")
+    ("U" dired-unmark-all-marks "Unmark all")
+    ("z" dired-do-compress "(Un)compress" :column "Actions")
+    ("+" dired-create-directory "Create")
+    ("T" dired-create-empty-file "Touch")
+    ("R" dired-do-rename "Rename")
+    ("S" dired-do-symlink "Link")
+    ("C" dired-do-copy "Copy")
+    ("D" dired-do-delete "Delete")
+    ("M" dired-do-chmod "Chmod" :column "Permissions")
+    ("O" dired-do-chown "Owner")
+    ("G" dired-do-chgrp "Group")
+    ;; Mapping q would override view-quit
+    ("." nil "Quit" :column "Exit" :exit t))
   :bind
   ([remap dired-find-file] . #'dired-find-alternate-file)
   :general
   (:states 'normal
            :keymaps 'dired-mode-map
            "h" 'dired-up-directory
-           "l" 'dired-find-file)
+           "l" 'dired-find-file
+           ;; default 'dired-do-touch (change timestamp)
+           ;; "T" 'dired-create-empty-file
+           "." 'my/hydra-dired/body)
   (my/leader-def
-    "d" '(:ignore t :which-key "Dired")
+    "d"  '(:ignore t :which-key "Dired")
     "dd" 'dired
     "dj" 'dired-jump))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 ;; TODO: is there a way to refactor this?
-(use-package latex
-  :straight auctex
-  :commands LaTeX-mode
-  :mode ("\\.tex\\'" . LaTeX-mode)
-  :config
-  (LaTeX-math-mode 1))
+;; (use-package latex
+;;   :straight auctex
+;;   :commands latex-mode
+;;   :config
+;;   (latex-math-mode 1))
 
-(use-package reftex
-  :straight auctex
-  :commands reftex-mode
-  :custom
-  (reftex-plug-into-AUCTeX t)
-  (reftex-use-external-file-finders t)
-  :hook
-  (LaTeX-mode . reftex-mode))
+(use-package tex-site
+  :load-path "site-lisp/auctex/"
+  ;; :commands latex-mode
+  ;; :mode ("\\.tex\\'" . latex-mode)
+  :init
+  (setq reftex-plug-into-AUCTeX t))
+  
+
+;; (use-package reftex
+;;   :straight auctex
+;;   :commands reftex-mode
+;;   :custom
+;;   (reftex-plug-into-AUCTeX t)
+;;   (reftex-use-external-file-finders t)
+;;   :hook
+;;   (latex-mode . reftex-mode))
 
 (use-package tex
-  :after latex
+  :after tex-site
   :custom
   (TeX-PDF-mode t)
   (TeX-auto-save t)
@@ -606,8 +737,7 @@ https://github.com/howardabrams/dot-files/
   :config
   (setq-default TeX-master nil)
   :hook
-  (TeX-after-compilation-finished-functions
-   . TeX-revert-document-buffer))
+  (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -637,7 +767,7 @@ https://github.com/howardabrams/dot-files/
   :general
   ;; Only show these bindings when in org-mode
   (my/leader-def
-    "o"   '(:ignore t :which-key "Org")
+    "o"  '(:ignore t :which-key "Org")
     "oa" 'org-agenda)
   :hook
   ;; Don't worry about indentation in the outline structure anymore
@@ -679,19 +809,30 @@ https://github.com/howardabrams/dot-files/
 
 (use-package vterm
   :straight t
-  :commands vterm
+  :commands (vterm vterm-other-window)
   :custom
   (vterm-kill-buffer-on-exit t) ;; kill the buffer when quitting the session
   (vterm-max-scrollback my/term-history-size)
   :config
-  (defun my/vterm-adjust-evil-cursor ()
-    "Prevent evil-mode from changing the appearance of the curosor inside different modes."
-    (setq-local evil-insert-state-cursor 'box
-                evil-move-cursor-back nil))
+  (defun my/vterm-setup-cursor ()
+    "Adjust the evil-cursor for the terminal."
+    (setq-local evil-move-cursor-back nil
+                evil-insert-state-cursor 'box))
   :bind
   ([remap term] . #'vterm)
+  (:map vterm-mode-map
+        ("C-y"  . evil-paste-after))
   :hook
-  (vterm-mode . my/vterm-adjust-evil-cursor))
+  (vterm-mode . my/vterm-setup-cursor))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package elpher
+  :straight t
+  :commands elpher-go
+  :custom
+  (elpher-use-tls t)
+  (elpher-ipv4-always t))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -705,7 +846,7 @@ https://github.com/howardabrams/dot-files/
     "gs"  'magit-status
     "gd"  'magit-diff-unstaged
     "gc"  'magit-branch-or-checkout
-    "gl"   '(:ignore t :which-key "Log")
+    "gl"  '(:ignore t :which-key "Log")
     "glc" 'magit-log-current
     "glf" 'magit-log-buffer-file
     "gb"  'magit-branch
@@ -714,26 +855,6 @@ https://github.com/howardabrams/dot-files/
     "gf"  'magit-fetch
     "gF"  'magit-fetch-all
     "gr"  'magit-rebase))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package git-gutter
-  :straight t
-  :commands git-gutter-mode
-  :custom
-  (git-gutter:update-interval 3)
-  (git-gutter:modified-sign "~")
-  (git-gutter:added-sign "+")
-  (git-gutter:deleted-sign "-")
-  ;; :bind
-  ;; (:map git-gutter-map
-  ;;       ("C-x v ="   . git-gutter:popup-hunk)
-  ;;       ("C-x p"     . git-gutter:previous-hunk)
-  ;;       ("C-x n"     . git-gutter:next-hunk)
-  ;;       ("C-x v s"   . git-gutter:stage-hunk)
-  ;;       ("C-x v r"   . git-gutter:revert-hunk)
-  ;;       ("C-x v SPC" . git-gutter:mark-hunk))
-  :hook (prog-mode . git-gutter-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -751,33 +872,43 @@ https://github.com/howardabrams/dot-files/
   (company-dabbrev-downcase nil)
   (company-dabbrev-ignore-case nil)
   (company-selection-wrap-around t)
-  (company-tooltip-width-grow-only t)
   (company-minimum-prefix-length 1)
-  (company-idle-delay 0)
+  (company-idle-delay 0.0)
+  (company-tooltip-width-grow-only t)
+  (company-tooltip-align-annotations t)
   :bind
+  ([remap indent-for-tab-command] . #'company-indent-or-complete-common)
   (:map company-active-map
-        ;; ("<return>" . company-complete-selection)
-        ("<tab>" . company-select-next)
-        ("<backtab>" . company-select-previous))
+        ("<return>"  . company-complete-selection)
+        ("RET"       . company-complete-selection)
+        ("<tab>"     . company-select-next)
+        ("TAB"       . company-select-next)
+        ("<backtab>" . company-select-previous)
+        ("S-TAB"     . company-select-previous))
   :hook
-  (prog-mode . company-mode)
-  (company-mode . company-tng-mode))
+  (prog-mode . company-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; NOTE: luckily this package also prevents whitespace-style beeing shown inside company.
-;; (use-package company-box
-;;   :straight t
-;;   :hook (company-mode . company-box-mode))
-#+end_src
+(defvar my/prev-whitespace-mode nil)
+(make-variable-buffer-local 'my/prev-whitespace-mode)
 
-#+begin_src emacs-lisp :tangle yes
-(use-package company-prescient
-  :straight t
-  :commands company-prescient-mode
-  :config
-  (prescient-persist-mode 1)
-  :hook (company-mode . company-prescient-mode))
+(defun my/pre-popup-draw ()
+  "Turn off whitespace mode before showing company complete tooltip"
+  (if whitespace-mode
+      (progn
+        (setq my/prev-whitespace-mode t)
+        (whitespace-mode -1)
+        (setq my/prev-whitespace-mode t))))
+(defun my/post-popup-draw ()
+  "Restore previous whitespace mode after showing company tooltip"
+  (if my/prev-whitespace-mode
+      (progn
+        (whitespace-mode +1)
+        (setq my/prev-whitespace-mode nil))))
+
+(advice-add 'company-pseudo-tooltip-unhide :before #'my/pre-popup-draw)
+(advice-add 'company-pseudo-tooltip-hide :after #'my/post-popup-draw)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -818,6 +949,8 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+(my/leader-def "n" '(:ignore t :which-key "Navigate"))
+
 (use-package flymake
   :commands flymake-mode
   :config
@@ -826,32 +959,36 @@ https://github.com/howardabrams/dot-files/
           :post (quit-windows-on (format "*Flymake diagnostics for %s*" (buffer-name)))
           :hint nil)
     "Errors"
-    ("j" flymake-goto-next-error "Next")
-    ("k" flymake-goto-prev-error "Previous")
+    ("j"  flymake-goto-next-error "Next")
+    ("k"  flymake-goto-prev-error "Previous")
     ("gg" (progn (goto-char (point-max)) (flymake-goto-next-error)) "First")
-    ("G" (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
-    ("q" nil))
+    ("G"  (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
+    ("q"  nil))
   :general
-  (my/leader-def "e" '(my/hydra-flymake/body :which-key "Errors"))
+  (my/leader-def "ne" '(my/hydra-flymake/body :which-key "Errors"))
   :hook (prog-mode . flymake-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; TODO: setup eldoc (build-in)
-;; REVIEW: add hooks for eglot-ensure in here of for each package exclusively?
 ;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
   :straight t
+  :after yasnippet
   :commands eglot-ensure
+  :custom
+  ;; Stop the server when the last buffer was killed
+  (eglot-autoshutdown t)
   :config
   (setq read-process-output-max (* 5 1024 1024)) ;; 5mb
   (add-to-list 'eglot-stay-out-of 'company)
   (setq eglot-server-programs
       (append '((yaml-mode . ("yaml-language-server" "--stdio"))
                 (dockerfile-mode . ("docker-langserver" "--stdio"))
+                ((c++-mode c-mode) . "clangd")
+                (rust-mode "rust-analyzer")
                 ;; FIXME: doesn't work!
-                ((c++-mode c-mode) "clangd")
                 (vue-mode . ("vls" "--stdio"))
+                (css-mode . ("css-languageserver" "--stdio"))
                 ;; TODO: setup eglot-ensure for this one
                 (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
@@ -861,13 +998,13 @@ https://github.com/howardabrams/dot-files/
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
-           "<f2>" 'eglot-rename
-           "gd" 'xref-find-definitions
-           "gr" 'xref-find-references
-           "gD" 'eglot-find-declaration
-           "gi" 'eglot-find-implementation
-           "gt" 'eglot-find-typeDefinition
-           "gh" 'eldoc)
+           "<f2>"   'eglot-rename
+           "gd"     'xref-find-definitions
+           "gr"     'xref-find-references
+           "gD"     'eglot-find-declaration
+           "gi"     'eglot-find-implementation
+           "gt"     'eglot-find-typeDefinition
+           "gh"     'eldoc)
   (:states 'visual
            :keymaps 'eglot-mode-map
            "ff" 'eglot-format)
@@ -893,17 +1030,6 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(use-package prettier
-  :straight t
-  :commands prettier-mode
-  :custom
-  (prettier-pre-warm 'none) ;; Speed up loading files
-  :hook
-  ((sgml-mode css-mode js-mode typescript-mode vue-mode yaml-mode json-mode)
-   . prettier-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
 ;; https://github.com/rust-lang/rust-mode
 (use-package rust-mode
   :straight t
@@ -914,6 +1040,7 @@ https://github.com/howardabrams/dot-files/
     (setq-local fill-column 99
                 indent-tabs-mode nil))
   :bind
+  ;; REVIEW: are those bindings necessary?
   (:map rust-mode-map
         ("C-c C-r" . rust-run)
         ("C-c C-t" . rust-test)
@@ -923,12 +1050,6 @@ https://github.com/howardabrams/dot-files/
   :hook
   (rust-mode . eglot-ensure)
   (rust-mode . my/rust-adjust-fill-column))
-
-;; https://github.com/kwrooijen/cargo.el
-(use-package cargo
-  :straight t
-  :commands cargo-minor-mode
-  :hook (rust-mode . cargo-minor-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -992,31 +1113,37 @@ https://github.com/howardabrams/dot-files/
 #+begin_src emacs-lisp :tangle yes
 (define-derived-mode vue-mode
   web-mode "Vue.js"
-  "Major mode for vue-files."
-  ;; TODO: set buffer-local variables here
-  )
+  "Major mode for vue.js files."
+  (setq web-mode-code-indent-offset 2))
 
 (add-to-list 'auto-mode-alist '("\\.vue\\'" . vue-mode))
 (add-hook 'vue-mode-hook #'eglot-ensure)
 #+end_src
 
+| =sgml-mode= | Built-in |
+| =css-mode=  | Built-in |
 #+begin_src emacs-lisp :tangle yes
+;; TODO: rethink sqml-, mhtml, and html-mode
 (use-package sgml-mode
-  :mode "\\.html?\\'"
+  ;; :mode "\\.html?\\'"
   :custom
   (sgml-basic-offset 2)
   :hook
   (sgml-mode . eglot-ensure))
 
 (use-package css-mode
-  :mode "\\.css\\'"
+  :commands css-mode
   :custom
   (css-indent-offset 2)
   :hook
   (css-mode . eglot-ensure))
 #+end_src
 
+| json-mode | [[https://github.com/joshwnj/json-mode][Github]] |
+| yaml-mode | [[https://github.com/yoshiki/yaml-mode][Github]] |
+| nix-mode  | [[https://github.com/NixOS/nix-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
+;; DEPRECATED: last update 23.01.19
 (use-package json-mode
   :straight t
   :mode "\\.json\\'"
@@ -1037,7 +1164,8 @@ https://github.com/howardabrams/dot-files/
 #+begin_src emacs-lisp :tangle yes
 (use-package sh-script
   :commands sh-mode
-  ;; TODO: setup indentation
+  :custom
+  (sh-basic-offset 2)
   :hook
   (sh-mode . eglot-ensure))
 #+end_src
@@ -1049,17 +1177,20 @@ https://github.com/howardabrams/dot-files/
   (sql-mode . eglot-ensure))
 #+end_src
 
-
 #+begin_src emacs-lisp :tangle yes
+;; https://jblevins.org/projects/markdown-mode/
 (use-package markdown-mode
   :straight t
+  :commands (markdown-mode gfm-mode)
   :mode (("README\\.md\\'" . gfm-mode)
-         ("\\.md\\'" . markdown-mode)
+         ("\\.md\\'"       . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
-  :init (setq markdown-command "multimarkdown"))
+  :custom
+  (markdown-command "multimarkdown"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+;; https://github.com/spotify/dockerfile-mode
 (use-package dockerfile-mode
   :straight t
   :mode "Dockerfile\\'"
@@ -1074,29 +1205,18 @@ https://github.com/howardabrams/dot-files/
 #+begin_src emacs-lisp :tangle yes
 ;; Systemd-files
 (setq auto-mode-alist
-      (append '(("\\.service\\'" . conf-unix-mode)
-                ("\\.timer\\'" . conf-unix-mode)
-                ("\\.target\\'" . conf-unix-mode)
-                ("\\.mount\\'" . conf-unix-mode)
+      (append '(("\\.service\\'"   . conf-unix-mode)
+                ("\\.timer\\'"     . conf-unix-mode)
+                ("\\.target\\'"    . conf-unix-mode)
+                ("\\.mount\\'"     . conf-unix-mode)
                 ("\\.automount\\'" . conf-unix-mode)
-                ("\\.slice\\'" . conf-unix-mode)
-                ("\\.socket\\'" . conf-unix-mode)
-                ("\\.path\\'" . conf-unix-mode)
-                ("\\.netdev\\'" . conf-unix-mode)
-                ("\\.network\\'" . conf-unix-mode)
-                ("\\.link\\'" . conf-unix-mode))
+                ("\\.slice\\'"     . conf-unix-mode)
+                ("\\.socket\\'"    . conf-unix-mode)
+                ("\\.path\\'"      . conf-unix-mode)
+                ("\\.netdev\\'"    . conf-unix-mode)
+                ("\\.network\\'"   . conf-unix-mode)
+                ("\\.link\\'"      . conf-unix-mode))
               auto-mode-alist))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Use the escape-key to quit prompts
-;; (define-key key-translation-map (kbd "<escape>") (kbd "C-g"))
-
-;; Need to tell evil to use C-g for quiting insert state, since ESC cant be produced
-;; (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
-;; (define-key evil-normal-state-map (kbd "C-g") 'evil-force-normal-state)
-
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1107,39 +1227,34 @@ https://github.com/howardabrams/dot-files/
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; split only if the original window has at least that many lines
+;; prefer vertical splitting when the frame is fullscreen.
 (setq split-height-threshold 50
       split-width-threshold 125)
 
-;; TODO: prevent Emacs from creating new frames
-
 ;; https://www.gnu.org/software/emacs/manual/html_mono/elisp.html#Buffer-Display-Action-Alists
 (setq display-buffer-base-action
-  '((display-buffer-reuse-window
+  '((display-buffer-reuse-window ;; This function tries to display buffer by finding a window that is already displaying it
      ;; if there already is a window with a buffer of the same mode use this one.
      ;; The types of modes to look at in this evaluation are provider with the mode key in the
      ;; alist below
      display-buffer-reuse-mode-window
-     ;; display the buffer in a window where it was deplayed before
-     display-buffer-in-previous-window
-     display-buffer-use-some-window
-     display-buffer-same-window)
-     ;; display-buffer-in-side-window)
-    . ((inhibit-same-window . t) ;; allow using the same window.
-       (resuable-frames . nil)
+     display-buffer-in-previous-window ;;  tries to display buffer in a window where it was displayed previously.
+     display-buffer-pop-up-window ;; split the window. This respects split-height/width-threshold
+     display-buffer-same-window ;; this (current) window
+     )
+    . ((inhibit-same-window . nil) ;; Allow using the same window.
+       (resuable-frames . nil) ;; Do not use other frames
+       (inhibit-switch-frame t) ;; prevents an another frame from being raised or selected
        (preserve-size (t . t)) ;; preserve the width and height of the chosen buffer (must already exist)
-       (inhibit-switch-frame t) ;; prevents another frame from being raised or selected
        ;; display-buffer-reuse-mode-window
-       (mode . (help-mode magit-mode eldoc-mode ediff-mode)))))
+       (mode . (help-mode magit-mode eldoc-mode)))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; TODO: hydra for window management
-;; use other-window windmove-left ...
-;; winner-mode for undo, redo
+;; REVIEW: use other color?
 (defhydra my/hydra-window (:color amaranth)
   "Window management"
-  ("h" windmove-left "Left" :column "Navigation")
+  ("h" windmove-left "Left" :column "Navigate")
   ("j" windmove-down "Down")
   ("k" windmove-up "Up")
   ("l" windmove-right "Right")
@@ -1149,51 +1264,73 @@ https://github.com/howardabrams/dot-files/
   ("J" windmove-swap-states-down "Down")
   ("K" windmove-swap-states-up "Up")
   ("L" windmove-swap-states-right "Right")
-  ;; FIXME: this is not really intuitiv
-  ("<left>" shrink-window-horizontally "Shrink (h)" :column "Resize")
-  ("<right>" enlarge-window-horizontally "Grow (h)")
-  ("<down>" shrink-window "Shrink (v)")
-  ("<up>" enlarge-window "Grow (v)")
-  ("u" winner-undo "Undo" :column "Action")
-  ("r" winner-redo "Redo")
-  ("0" delete-window "Window")
+  ("<" shrink-window-horizontally "Shrink (h)" :column "Resize")
+  (">" enlarge-window-horizontally "Grow (h)")
+  ("," shrink-window "Shrink (v)")
+  ("." enlarge-window "Grow (h)")
+  ("0" delete-window "Window" :column "Delete")
   ("o" delete-other-windows "Other" :exit t)
-  ("q" nil "Exit" :column "Quit" :exit t))
-#+end_src
+  ("u" winner-undo "Undo")
+  ("r" winner-redo "Redo")
+  ("q" nil "Quit" :column "Exit" :exit t))
 
+(my/leader-def
+  "w"  '(my/hydra-window/body :which-key "Windows"))
+#+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (defun my/kill-all-buffers ()
-  "Kill all buffers without regard for their origin."
+  "kill all buffers without regard for their origin."
   (interactive)
   (mapc 'kill-buffer (buffer-list)))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-;; TODO: use Hydra for some shortcuts
+;; TODO: reorganize!
 (my/leader-def
-  "w" '(my/hydra-window/body :which-key "Windows")
-  "h" '(:keymap help-map :which-key "Help")
-  "b" '(:keymap bookmark-map :which-key "Bookmarks")
-  "q"   '(:ignore t :which-key "Quit")
-  "qb" '(kill-this-buffer :which-key "This Buffer")
-  "qa" '(my/kill-all-buffers :which-key "All Buffers")
+  "b"  '(:keymap bookmark-map :which-key "Bookmarks")
+  "q"  '(:ignore t :which-key "Quit")
+  "qb" '(kill-this-buffer :which-key "This buffer")
+  "qa" '(my/kill-all-buffers :which-key "All buffers")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(defalias 'eb 'eval-buffer)
-(defalias 'kb 'kill-buffer)
-(defalias 'dd 'my/desktop-delete)
-(defalias 'dr 'my/desktop-restore-if-exists)
-(defalias 'cp 'check-parens)
-(defalias 'lt 'load-theme)
+;; REVIEW: when to use defalias instead?
+(evil-ex-define-cmd "eb"     'eval-buffer)
+(evil-ex-define-cmd "er"     'eval-region)
+(evil-ex-define-cmd "kb"     'kill-buffer)
+(evil-ex-define-cmd "kab"    'my/kill-all-buffers)
+(evil-ex-define-cmd "cp"     'check-parens)
+(evil-ex-define-cmd "mu[4e]" 'mu4e)
+(evil-ex-define-cmd "lt"     'load-theme)
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(require 'server)
+(unless (server-running-p)
+  (add-hook 'after-init-hook #'server-start t))
+(custom-set-variables '(server-kill-new-buffers t))
+(add-hook 'server-done-hook #'delete-frame)
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package desktop
+  :ensure nil
+  :hook
+  (after-init . desktop-read)
+  (after-init . desktop-save-mode)
+  :custom
+  (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
+  (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
+  (desktop-restore-eager 1) ;; only restore one buffer immediately
+  (desktop-restore-frames nil))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
 (add-hook 'after-init #'global-auto-revert-mode)
 ;; Enable folding by using hide-show-mode
 (add-hook 'prog-mode-hook #'hs-minor-mode)
-;; winner-mode is used in my/hydra-window
+;; winner-mode is used in my/hydra-window and ediff
 (add-hook 'window-setup-hook #'winner-mode)
 #+end_src
