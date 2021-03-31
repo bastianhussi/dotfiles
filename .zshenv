@@ -6,9 +6,9 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_DATA_HOME="$HOME/.local/share"
 
-export MAILDIR="$XDG_DATA_HOME/mail"
-
 export LESSHISTFILE=- # no less history-file
+
+export MAILDIR="$HOME/.mail"
 
 [[ -e ~/.profile ]] && emulate sh -c '. ~/.profile'
 
@@ -29,17 +29,24 @@ if [ -d "$GOBIN" ] ; then
     PATH="$GOBIN:$PATH"
 fi
 
+export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")
+PATH=$JAVA_HOME/bin:$PATH
+
 # setup Deno
-export DENO_INSTALL="$HOME/.local/share/deno"
-if [ -d "$DENO_INSTALL" ] ; then
-    PATH="$DENO_INSTALL:$PATH"
-fi
+# export DENO_INSTALL="$HOME/.local/share/deno"
+# if [ -d "$DENO_INSTALL" ] ; then
+#     PATH="$DENO_INSTALL:$PATH"
+# fi
 
 # setup Rust
 export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
 export CARGO_HOME="$XDG_DATA_HOME"/cargo
 if [ -d "$CARGO_HOME/bin" ] ; then
     PATH="$CARGO_HOME/bin:$PATH"
+fi
+
+if [ -d "$XDG_DATA_HOME/npm/bin" ] ; then
+    PATH="$XDG_DATA_HOME/npm/bin:$PATH"
 fi
 
 # setup Android development

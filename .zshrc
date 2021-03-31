@@ -12,11 +12,11 @@ alias rm='rm -I'
 alias du='du -sh'
 alias free='free -h'
 
-# alias sudo="doas"
-# alias docker="podman"
+alias docker="podman"
 
 alias vi="nvim"
 alias vim="nvim"
+alias vimdiff="nvim -d"
 
 autoload -Uz compinit
 compinit

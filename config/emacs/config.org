@@ -97,10 +97,11 @@
   (font-lock-string-face   ((t (:slant italic))))
   :config
   ;; Increase font-lock speed. Otherwise this may take some time.
-  (setq jit-lock-stealth-time 0.10
+  (setq jit-lock-stealth-time 0.12
         jit-lock-stealth-nice 0.00))
 #+end_src
 
+| =ligature= | [[https://github.com/mickeynp/ligature.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package ligature
   :if (>= emacs-major-version 28)
@@ -150,6 +151,7 @@
   (mouse-wheel-follow-mouse t))
 #+end_src
 
+| =epa-file= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package epa-file
   :commands epa-file-enable
@@ -169,6 +171,7 @@
   :hook (after-init . epa-file-enable))
 #+end_src
 
+| =files= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package files
   :defer t
@@ -191,6 +194,7 @@
         create-lockfiles nil))
 #+end_src
 
+| =nord-theme= | [[https://www.nordtheme.com/ports/emacs][Nord theme]] |
 #+begin_src emacs-lisp :tangle yes
 (setq ring-bell-function 'ignore)
 
@@ -206,12 +210,7 @@
 ;; Load custom theme
 (push (expand-file-name "lisp" default-directory) load-path)
 
-;; (use-package nord-theme
-;;  :load-path "~/.config/emacs/"
-;;  :init
-;;  (setq custom-safe-themes t) ;; All themes are considered safe to load
-;;  :config
-;;  (load-theme 'nord))
+;; TODO: write custom theme
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -259,6 +258,10 @@
        ))))))
 #+end_src
 
+| =evil=            | [[https://github.com/emacs-evil/evil][Github]] |
+| =evil-collection= | [[https://github.com/emacs-evil/evil-collection][Github]] |
+| =evil-surround=   | [[https://github.com/emacs-evil/evil-surround][Github]] |
+| =evil-snipe=      | [[https://github.com/hlissner/evil-snipe][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; Vim within Emacs.
 (use-package evil
@@ -322,6 +325,7 @@
   (evil-snipe-override-mode +1))
 #+end_src
 
+| =general= | [[https://github.com/noctuid/general.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; Convenient way to manage keybindings
 (use-package general
@@ -394,6 +398,7 @@
                 "j" 'evil-normal-state))
 #+end_src
 
+| =hydra= | [[https://github.com/abo-abo/hydra][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package hydra
   :straight t
@@ -402,6 +407,7 @@
 ;; REVIEW: map all hydras here?
 #+end_src
 
+| =which-key= | [[https://github.com/justbur/emacs-which-key][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; Displays key bindings following the currently entered incomplete command in a popup.
 (use-package which-key
@@ -413,6 +419,8 @@
   :hook (window-setup . which-key-mode))
 #+end_src
 
+| =display-line-numbers= | Built-in |
+| =hl-line=              | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package display-line-numbers
   :commands display-line-numbers-mode
@@ -446,6 +454,7 @@
 (add-hook 'prog-mode-hook #'my/hl-todo)
 #+end_src
 
+| =tab-bar= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
 ;; NOTE: no need to enable tab-bar-mode. If there is more than one tab the mode will be enable automatically.
@@ -472,6 +481,8 @@
   (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
 #+end_src
 
+| =help=  | Built-in |
+| =eldoc= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; TODO: setup eldoc
 
@@ -485,6 +496,7 @@
   "h"  '(:keymap help-map :which-key "Help")))
 #+end_src
 
+| =elec-pair= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Automatically insert closing pairs like ", ), ], }
 (use-package elec-pair
@@ -494,6 +506,7 @@
   :hook (prog-mode . electric-pair-mode))
 #+end_src
 
+| =paren= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Highlight matching parenthesis
 (use-package paren
@@ -505,6 +518,7 @@
   :hook (prog-mode . show-paren-mode))
 #+end_src
 
+| =whitespace= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Highlight some non printable characters like tabs and trailing spaces
 (use-package whitespace
@@ -527,10 +541,11 @@
   (whitespace-mode . my/whitespace-cleanup-mode))
 #+end_src
 
+| =simple= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Auto break lines when hitting the fill-column limit
 (use-package simple
-  :commands auto-fill-mode
+  :commands turn-on-auto-fill
   :init
   (global-visual-line-mode 1) ;; Soft wrap in all buffers
   :custom
@@ -539,9 +554,11 @@
   ;; Don't show a backslash when wrapping a line
   (set-display-table-slot standard-display-table 'wrap ?\ )
   :hook
-  (prog-mode . auto-fill-mode))
+  ;; enable auto-fill-mode for the current buffer
+  (prog-mode . turn-on-auto-fill))
 #+end_src
 
+| =ediff= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; https://oremacs.com/2015/01/17/setting-up-ediff/
 ;; TODO: defer loading
@@ -555,6 +572,7 @@
   (add-hook 'ediff-after-quit-hook-internal #'winner-undo))
 #+end_src
 
+| =ivy= | [[https://github.com/abo-abo/swiper][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; Ivy is a generic completion mechanism for Emacs.
 (use-package ivy
@@ -562,48 +580,36 @@
   :commands ivy-mode
   :custom
   (ivy-wrap t)
-  ;; Add bookmarks and recentf to buffer list
-  (ivy-use-virtual-buffers t)
   (ivy-height 12)
   (ivy-auto-select-single-candidate t)
-  (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
   ;; Do not close the minibuffer with delete
   (ivy-on-del-error-function nil)
+  (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
+  ;; Add bookmarks and recentf to buffer list
+  (ivy-use-virtual-buffers t)
   :config
-  ;; use fuzzy matching everywhere except for swiper
+  ;; REVIEW: use fuzzy matching in any case?
   (setq ivy-re-builders-alist
         '((swiper . ivy--regex-ignore-order)
           (t      . ivy--regex-plus)))
   :bind
   (:map ivy-minibuffer-map
-        ("<return>"  . ivy-done)
-        ("RET"       . ivy-done)
-        ("<tab>"     . ivy-next-line)
-        ("TAB"       . ivy-next-line)
-        ("<backtab>" . ivy-previous-line)
-        ("S-TAB"     . ivy-previous-line))
+        ;; Don't finish the completion when selecting a directory
+        ("<return>"    . ivy-alt-done)
+        ("RET"         . ivy-alt-done)
+        ;; Allow selecting a directory
+        ("M-<return>"  . ivy-done)
+        ("M-RET"       . ivy-done)
+        ("<tab>"       . ivy-next-line)
+        ("TAB"         . ivy-next-line)
+        ("<backtab>"   . ivy-previous-line)
+        ("S-TAB"       . ivy-previous-line)
+        ("C-n"         . ivy-next-history-element)
+        ("C-p"         . ivy-previous-history-element))
   :hook (after-init . ivy-mode))
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
-(use-package prescient
-  :straight t
-  :commands prescient-persist-mode
-  :custom
-  (prescient-sort-length-enable nil)
-  (prescient-history-length 25))
-
-(use-package ivy-prescient
-  :straight t
-  :after counsel
-  :custom
-  (ivy-prescient-enable-filtering nil)
-  (ivy-prescient-retain-classic-highlighting t)
-  :config
-  (ivy-prescient-mode +1)
-  (prescient-persist-mode +1))
-#+end_src
-
+| =counsel= | [[https://github.com/abo-abo/swiper][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package counsel
   :straight t
@@ -627,6 +633,7 @@
   :hook (ivy-mode . counsel-mode))
 #+end_src
 
+| =recentf= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package recentf
   :defer 10 ;; defer loading by 10s
@@ -641,6 +648,7 @@
   (run-at-time nil (* 15 60) 'recentf-save-list))
 #+end_src
 
+| =project= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package project
   :defer t
@@ -649,6 +657,7 @@
     "p" '(:keymap project-prefix-map :which-key "Project")))
 #+end_src
 
+| =dired= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; Emacs build-in file manager
 (use-package dired
@@ -659,10 +668,13 @@
   (dired-listing-switches "-Ahlv --group-directories-first") ;; Change the arguments passed to ls
   (dired-hide-details-hide-symlink-targets nil) ;; ...
   (dired-recursive-copies 'always)
+  ;; Omit dotfiles (which are included by dired-listing-switches)
+  (dired-omit-files "^\\..*")
   :config
   ;; use dired-find-alternate-file instead of dired-find-file to prevent dired to create so many buffers.
   (put 'dired-find-alternate-file 'disabled nil)
   ;; A hydra for conveniently using dired commands
+  ;; TODO: close hydra when the dired buffer is killed
   (defhydra my/hydra-dired (:hint nil :color pink)
     "Dired commands"
     ("(" dired-hide-details-mode "Detail" :column "View")
@@ -740,6 +752,7 @@
   (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
 #+end_src
 
+| =org= | [[https://orgmode.org/][Org Mode]] |
 #+begin_src emacs-lisp :tangle yes
 ;; A major mode for convenient plain text markup - and much more.
 (use-package org
@@ -794,6 +807,8 @@
 (add-hook 'compilation-filter-hook #'colorize-compilation-buffer)
 #+end_src
 
+| =eshell= | Built-in |
+| =vterm=  | [[https://github.com/akermu/emacs-libvterm][Github]]   |
 #+begin_src emacs-lisp :tangle yes
 (defvar my/term-history-size 5000)
 
@@ -826,6 +841,7 @@
   (vterm-mode . my/vterm-setup-cursor))
 #+end_src
 
+| =elpher= | [[https://thelambdalab.xyz/elpher/][The Lambda Lab]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package elpher
   :straight t
@@ -835,6 +851,7 @@
   (elpher-ipv4-always t))
 #+end_src
 
+| =magit= | [[https://magit.vc/][Magit]] |
 #+begin_src emacs-lisp :tangle yes
 ;; A Git Porcelain inside Emacs.
 (use-package magit
@@ -857,6 +874,7 @@
     "gr"  'magit-rebase))
 #+end_src
 
+| =company= | [[https://github.com/company-mode/company-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package company
   :straight t
@@ -886,7 +904,7 @@
         ("<backtab>" . company-select-previous)
         ("S-TAB"     . company-select-previous))
   :hook
-  (prog-mode . company-mode))
+  ((prog-mode org-mode) . company-mode))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -911,8 +929,9 @@
 (advice-add 'company-pseudo-tooltip-hide :after #'my/post-popup-draw)
 #+end_src
 
+| =yasnippet=          | [[https://github.com/joaotavora/yasnippet][Github]] |
+| =yasnippet-snippets= | [[https://github.com/AndreaCrotti/yasnippet-snippets][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; https://github.com/joaotavora/yasnippet
 (use-package yasnippet
   :straight t
   :commands yas-minor-mode
@@ -922,12 +941,13 @@
   (yas-reload-all)
   :hook (prog-mode . yas-minor-mode))
 
-;; https://github.com/AndreaCrotti/yasnippet-snippets
 (use-package yasnippet-snippets
   :straight t
   :after yasnippet)
 #+end_src
 
+| =flyspell= | Built-in |
+| =ispell=   | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package flyspell
   :commands (flyspell-mode flyspell-prog-mode)
@@ -948,6 +968,7 @@
   (ispell-hunspell-add-multi-dic "en_US,de_DE"))
 #+end_src
 
+| =flymake= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (my/leader-def "n" '(:ignore t :which-key "Navigate"))
 
@@ -969,6 +990,7 @@
   :hook (prog-mode . flymake-mode))
 #+end_src
 
+| =eglot= | [[https://github.com/joaotavora/eglot][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
@@ -976,8 +998,10 @@
   :after yasnippet
   :commands eglot-ensure
   :custom
-  ;; Stop the server when the last buffer was killed
-  (eglot-autoshutdown t)
+  (eglot-autoreconnect 10) ;; reconnect after failure if the previous connection lastest at least 10 seconds
+  (eglot-autoshutdown t) ;; Shut down the server after killing the last buffer
+  ;; Tell elgot to perform these checks
+  (eglot-strict-mode '(enforce-required-keys))
   :config
   (setq read-process-output-max (* 5 1024 1024)) ;; 5mb
   (add-to-list 'eglot-stay-out-of 'company)
@@ -986,12 +1010,14 @@
                 (dockerfile-mode . ("docker-langserver" "--stdio"))
                 ((c++-mode c-mode) . "clangd")
                 (rust-mode "rust-analyzer")
+                (mhtml-mode "")
                 ;; FIXME: doesn't work!
                 (vue-mode . ("vls" "--stdio"))
                 (css-mode . ("css-languageserver" "--stdio"))
                 ;; TODO: setup eglot-ensure for this one
                 (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
+  ;; FIXME: doesnt work (see rust)
   (defun my/eglot-format-buffer-before-save ()
     "Format the buffer with eglot before saving it"
     (add-hook 'before-save-hook #'eglot-format-buffer nil 'local))
@@ -1029,8 +1055,8 @@
   (eglot-mode . my/eglot-format-buffer-before-save))
 #+end_src
 
+| =rust-mode= | [[https://github.com/rust-lang/rust-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; https://github.com/rust-lang/rust-mode
 (use-package rust-mode
   :straight t
   :mode "\\.rs\\'"
@@ -1040,18 +1066,18 @@
     (setq-local fill-column 99
                 indent-tabs-mode nil))
   :bind
-  ;; REVIEW: are those bindings necessary?
   (:map rust-mode-map
-        ("C-c C-r" . rust-run)
-        ("C-c C-t" . rust-test)
-        ("C-c C-c" . rust-check)
-        ("C-c C-v" . rust-run-clippy)
-        ("C-c C-b" . rust-compile))
+      ("C-c C-c" . rust-run)
+      ("C-c C-t" . rust-test)
+      ;; ("C-c C-c" . rust-check)
+      ("C-c C-l" . rust-run-clippy)
+      ("C-c C-b" . rust-compile))
   :hook
   (rust-mode . eglot-ensure)
   (rust-mode . my/rust-adjust-fill-column))
 #+end_src
 
+| =go-mode= | [[https://github.com/dominikh/go-mode.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package go-mode
   :straight t
@@ -1062,6 +1088,9 @@
   :hook (go-mode . eglot-ensure))
 #+end_src
 
+
+| =python-mode= | Built-in |
+| =pyvenv-mode= | [[https://github.com/jorgenschaefer/pyvenv][Github]]   |
 #+begin_src emacs-lisp :tangle yes
 (use-package python
   :commands python-mode
@@ -1075,6 +1104,8 @@
   :hook (python-mode . pyvenv-mode))
 #+end_src
 
+| =c-mode=   | Built-in |
+| =c++-mode= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package c-mode
   :commands c-mode
@@ -1085,7 +1116,9 @@
   :hook (c++-mode . eglot-ensure))
 #+end_src
 
+| =js-mode= | Built-in |
 #+begin_src emacs-lisp :tangle yes
+;; Works for *.js, *.jsx and *.json files
 (use-package js
   :commands js-mode
   :config
@@ -1093,6 +1126,7 @@
   :hook (js-mode . eglot-ensure))
 #+end_src
 
+| =js-mode= | [[https://github.com/emacs-typescript/typescript.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package typescript-mode
   :straight t
@@ -1102,14 +1136,16 @@
   :hook (typescript-mode . eglot-ensure))
 #+end_src
 
+| =web-mode= | [[https://github.com/fxbois/web-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
+;; TODO: configure pairing and quoting
+;; REVIEW: other usecases for web-mode besides vue.js?
 (use-package web-mode
   :straight t
-  :commands web-mode
-  :custom
-  (web-mode-code-indent-offset 2))
+  :commands web-mode)
 #+end_src
 
+| =vue-mode= | Custom |
 #+begin_src emacs-lisp :tangle yes
 (define-derived-mode vue-mode
   web-mode "Vue.js"
@@ -1123,9 +1159,10 @@
 | =sgml-mode= | Built-in |
 | =css-mode=  | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; TODO: rethink sqml-, mhtml, and html-mode
+;; TODO: rethink sgml-mode mhtml-mode and html-mode
 (use-package sgml-mode
-  ;; :mode "\\.html?\\'"
+  :disabled t
+  :commands sgml-mode
   :custom
   (sgml-basic-offset 2)
   :hook
@@ -1139,16 +1176,10 @@
   (css-mode . eglot-ensure))
 #+end_src
 
-| json-mode | [[https://github.com/joshwnj/json-mode][Github]] |
 | yaml-mode | [[https://github.com/yoshiki/yaml-mode][Github]] |
 | nix-mode  | [[https://github.com/NixOS/nix-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; DEPRECATED: last update 23.01.19
-(use-package json-mode
-  :straight t
-  :mode "\\.json\\'"
-  :hook
-  (json-mode . eglot-ensure))
+;; NOTE: js-mode covers json-files
 
 (use-package yaml-mode
   :straight t
@@ -1161,15 +1192,27 @@
   :mode "\\.nix\\'")
 #+end_src
 
+| =restclient= | [[https://github.com/pashky/restclient.el][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package restclient
+  :straight t
+  :commands restclient-mode
+  :mode (("\\.http\\'" . restclient-mode)))
+
+;; REVIEW: custom binding? formatting?
+#+end_src
+
+| =sh-script= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package sh-script
   :commands sh-mode
   :custom
-  (sh-basic-offset 2)
+  (sh-basic-offset 4) ;; Default value
   :hook
   (sh-mode . eglot-ensure))
 #+end_src
 
+| =sql= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package sql
   :commands sql-mode
@@ -1177,8 +1220,8 @@
   (sql-mode . eglot-ensure))
 #+end_src
 
+| =markdown-mode= | [[https://github.com/jrblevin/markdown-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; https://jblevins.org/projects/markdown-mode/
 (use-package markdown-mode
   :straight t
   :commands (markdown-mode gfm-mode)
@@ -1189,8 +1232,8 @@
   (markdown-command "multimarkdown"))
 #+end_src
 
+| =dockerfile-mode= | [[https://github.com/spotify/dockerfile-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; https://github.com/spotify/dockerfile-mode
 (use-package dockerfile-mode
   :straight t
   :mode "Dockerfile\\'"
@@ -1306,6 +1349,7 @@
 (evil-ex-define-cmd "lt"     'load-theme)
 #+end_src
 
+| =server= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (require 'server)
 (unless (server-running-p)
@@ -1315,16 +1359,38 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+;; TODO: Buffer-mode!
+#+end_src
+
+| =desktop= | Built-in |
+#+begin_src emacs-lisp :tangle yes
+;; https://github.com/purcell/emacs.d/blob/master/lisp/init-sessions.el
+;; https://www.emacswiki.org/emacs/DeskTop
 (use-package desktop
-  :ensure nil
-  :hook
-  (after-init . desktop-read)
-  (after-init . desktop-save-mode)
+  :commands (desktop-read desktop-save-mode)
   :custom
   (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
   (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
-  (desktop-restore-eager 1) ;; only restore one buffer immediately
-  (desktop-restore-frames nil))
+  ;; only restore one buffer immediately. The rest is loaded lazy.
+  (desktop-restore-eager 1)
+  ;; don't restore the frame and window configuration
+  (desktop-restore-frames nil)
+  :config
+  (setq history-length 250)
+  (setq desktop-globals-to-save
+        (append '((file-name-history      . 100)
+                  (minibuffer-history     . 50)
+                  (search-ring            . 20)
+                  (ivy-history            . 100)
+                  (magit-revision-history . 50))
+                desktop-globals-to-save))
+  ;; REVIEW: desktop-globals-to-clear
+  ;; TODO: not store dired, tramp, eglot
+  :hook
+  (after-init . desktop-read)
+  (after-init . desktop-save-mode))
+
+;; REVIEW: (add-hook 'after-init-hook 'savehist-mode)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1333,4 +1399,54 @@
 (add-hook 'prog-mode-hook #'hs-minor-mode)
 ;; winner-mode is used in my/hydra-window and ediff
 (add-hook 'window-setup-hook #'winner-mode)
+#+end_src
+
+| =polymode= | [[https://github.com/polymode/polymode][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package polymode
+  :straight t
+  :commands (define-hostmode define-innermode define-polymode)
+  :config
+  (setq polymode-prefix-key (kbd "C-c n")))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(define-hostmode poly-js-hostmode :mode 'js-mode)
+
+(define-innermode poly-css-expr-js-innermode
+  :mode 'css-mode
+  ;; REVIEW: improve regex?
+  :head-matcher "css`.*"
+  :tail-matcher ".*`"
+  :head-mode 'host
+  :tail-mode 'host)
+
+(define-polymode poly-js-css-mode
+  :hostmode 'poly-js-hostmode
+  :innermodes '(poly-css-expr-js-innermode)
+  (define-key poly-js-css-mode-map (kbd "C-c C-c") 'polymode-eval-chunk))
+
+;; TODO: add this mode for ts ass well
+(add-to-list 'auto-mode-alist '("\\.jsx?\\'" . poly-js-css-mode))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(define-hostmode poly-vue-hostmode :mode 'vue-mode)
+
+(define-innermode poly-css-expr-vue-innermode
+  :mode 'css-mode
+  ;; REVIEW: improve regex?
+  :head-matcher "<style>.*"
+  :tail-matcher ".*</style>"
+  :head-mode 'host
+  :tail-mode 'host)
+
+(define-polymode poly-vue-css-mode
+  :hostmode 'poly-vue-hostmode
+  :innermodes '(poly-css-expr-vue-innermode)
+  (define-key poly-vue-css-mode-map (kbd "C-c C-c") 'polymode-eval-chunk))
+
+;; TODO: add mode for ts, js and html
+
+(add-to-list 'auto-mode-alist '("\\.vue\\'" . poly-vue-css-mode))
 #+end_src
