@@ -73,7 +73,8 @@
 (use-package faces
   :commands my/faces-fontset-emojis
   :init
-  (setq use-default-font-for-symbols nil) ;; Prevent the default font from displaying symbols
+  ;; Prevent the default font from displaying symbols
+  (setq use-default-font-for-symbols nil)
   :custom-face
   (variable-pitch ((t (:family "Cantarell"      :height 150))))
   (fixed-pitch    ((t (:family "Fira Code"      :height 160))))
@@ -98,7 +99,7 @@
   :config
   ;; Increase font-lock speed. Otherwise this may take some time.
   (setq jit-lock-stealth-time 0.12
-        jit-lock-stealth-nice 0.00))
+        jit-lock-stealth-nice 0.05))
 #+end_src
 
 | =ligature= | [[https://github.com/mickeynp/ligature.el][Github]] |
@@ -138,17 +139,6 @@
               indent-tabs-mode nil
               tab-width 4
               tab-always-indent nil)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package mwheel
-  :defer t
-  :custom
-  ;; Amount to scroll windows by when spinning the mouse wheel
-  (mouse-wheel-scroll-amount '(3 ((shift) . 1)))
-  ;; Do not increase scrolling by moving the wheel faster
-  (mouse-wheel-progressive-speed nil)
-  (mouse-wheel-follow-mouse t))
 #+end_src
 
 | =epa-file= | Built-in |
@@ -194,23 +184,19 @@
         create-lockfiles nil))
 #+end_src
 
-| =nord-theme= | [[https://www.nordtheme.com/ports/emacs][Nord theme]] |
+| =colorful-theme= | Custom |
 #+begin_src emacs-lisp :tangle yes
-(setq ring-bell-function 'ignore)
-
-(use-package nord-theme
-  :straight t
+(use-package colorful-theme
+  :load-path default-directory
   :init
-  (setq custom-safe-themes t) ;; All themes are considered safe to load
-  :config
-  (load-theme 'nord)
+  (setq custom-safe-themes t
+        ring-bell-function 'ignore)
   :custom
-  (nord-region-highlight 'frost))
-
-;; Load custom theme
-(push (expand-file-name "lisp" default-directory) load-path)
-
-;; TODO: write custom theme
+  (colorful-height-title-1 1.3)
+  (colorful-height-title-2 1.2)
+  (colorful-height-title-3 1.1)
+  :config
+  (load-theme 'colorful))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -232,19 +218,16 @@
       (list
        my/mode-line-separator
        '(:eval (cond
-                ((eq evil-state 'normal) (propertize "<N>" 'face '(:foreground "green")))
-                ((eq evil-state 'insert) (propertize "<I>" 'face '(:foreground "red")))
-                ((eq evil-state 'visual) (propertize "<V>" 'face '(:foreground "yellow")))
-                ((eq evil-state 'motion) (propertize "<M>" 'face '(:foreground "orange")))
+                ((eq evil-state 'normal) (propertize " <N> " 'face '(:background "green")))
+                ((eq evil-state 'insert) (propertize " <I> " 'face '(:background "red")))
+                ((eq evil-state 'visual) (propertize " <V> " 'face '(:background "yellow")))
+                ((eq evil-state 'motion) (propertize " <M> " 'face '(:background "orange")))
                 (t "<*>")))
        my/mode-line-separator
        ;; Highlight the file name if there are unsaved changes
        (if (and buffer-file-name (buffer-modified-p))
            (propertize "%b" 'face '(:foreground "red"))
          "%b")
-       my/mode-line-separator
-       ;; Mode
-       (propertize "(%m)" 'face '(:inherit font-lock-comment-face))
        ))
      ;; Right hand side
      (format-mode-line
@@ -398,6 +381,19 @@
                 "j" 'evil-normal-state))
 #+end_src
 
+| =disable-mouse= | [[https://github.com/purcell/disable-mouse][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package disable-mouse
+  :straight t
+  :config
+  (mapc #'disable-mouse-in-keymap
+        (list evil-motion-state-map
+              evil-normal-state-map
+              evil-visual-state-map
+              evil-insert-state-map))
+  :hook (after-init . global-disable-mouse-mode))
+#+end_src
+
 | =hydra= | [[https://github.com/abo-abo/hydra][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package hydra
@@ -442,12 +438,12 @@
 (defun my/hl-todo ()
   "Highlight TODO and similar keywords."
   (font-lock-add-keywords
-   nil '(("\\(\\<\\(TODO\\)\\>[:]*\\)"       1 '((t :foreground "yellow" :weight bold)) t)
-         ("\\(\\<\\(FIXME\\)\\>[:]*\\)"      1 '((t :foreground "red" :weight bold)) t)
-         ("\\(\\<\\(HACK\\)\\>[:]*\\)"       1 '((t :foreground "red" :weight bold)) t)
-         ("\\(\\<\\(DEBUG\\)\\>[:]*\\)"      1 '((t :foreground "red" :weight bold)) t)
-         ("\\(\\<\\(NOTE\\)\\>[:]*\\)"       1 '((t :foreground "green" :weight bold)) t)
-         ("\\(\\<\\(SEE\\)\\>[:]*\\)"        1 '((t :foreground "green" :weight bold)) t)
+   nil '(("\\(\\<\\(TODO\\)\\>[:]*\\)"       1 '((t :inherit success :weight bold)) t)
+         ("\\(\\<\\(FIXME\\)\\>[:]*\\)"      1 '((t :inherit error :weight bold)) t)
+         ("\\(\\<\\(HACK\\)\\>[:]*\\)"       1 '((t :inherit error :weight bold)) t)
+         ("\\(\\<\\(DEBUG\\)\\>[:]*\\)"      1 '((t :inherit warning :weight bold)) t)
+         ("\\(\\<\\(NOTE\\)\\>[:]*\\)"       1 '((t :inherit success :weight bold)) t)
+         ("\\(\\<\\(SEE\\)\\>[:]*\\)"        1 '((t :inherit success :weight bold)) t)
          ("\\(\\<\\(REVIEW\\)\\>[:]*\\)"     1 '((t :foreground "blue" :weight bold)) t)
          ("\\(\\<\\(DEPRECATED\\)\\>[:]*\\)" 1 '((t :foreground "blue" :weight bold)) t))))
 
@@ -463,6 +459,7 @@
   :custom
   (tab-bar-close-button-show nil) ;; Don't show buttons
   (tab-bar-new-button-show nil)
+  (tab-bar-history-buttons-show nil)
   (tab-bar-new-tab-choice "*scratch*") ;; New tabs will show the scratch-buffer
   (tab-bar-new-tab-to 'rightmost)  ;; Always add new tabs to the rightmost position
   :config
@@ -471,6 +468,8 @@
     ("t"   tab-new "Create a new tab" :column "Action")
     ("0"   tab-close "Close current tab")
     ("o"   tab-close-other "Other" :exit t)
+    ("u"   tab-bar-history-back "Undo")
+    ("r"   tab-bar-history-forward "Redo")
     ("m"   tab-move "Move current tab" :column "Modification")
     ("r"   tab-rename "Rename Tab")
     ("RET" tab-bar-select-tab-by-name "Select tab by name" :column "Navigation")
@@ -478,7 +477,9 @@
     ("h"   tab-previous "Previous Tab")
     ("q"   nil "Quit" :exit t))
   :general
-  (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs")))
+  (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs"))
+  ;; remember window configurations used in every tab
+  :hook (tab-bar-mode . tab-bar-history-mode))
 #+end_src
 
 | =help=  | Built-in |
@@ -533,12 +534,9 @@
   (whitespace-style '(face spaces space-mark tabs tab-mark space-before-tab space-after-tab
                            newline newline-mark trailing lines-tail))
   :config
-  (defun my/whitespace-cleanup-mode ()
-    "Cleanup trailing whitespaces before saving a buffer."
-    (add-hook 'before-save-hook #'whitespace-cleanup nil 'local))
+  (add-hook 'before-save-hook #'whitespace-cleanup -10 t)
   :hook
-  (prog-mode       . whitespace-mode)
-  (whitespace-mode . my/whitespace-cleanup-mode))
+  (prog-mode       . whitespace-mode))
 #+end_src
 
 | =simple= | Built-in |
@@ -547,7 +545,7 @@
 (use-package simple
   :commands turn-on-auto-fill
   :init
-  (global-visual-line-mode 1) ;; Soft wrap in all buffers
+  (global-visual-line-mode +1) ;; Soft wrap in all buffers
   :custom
   (kill-ring-max 100) ;; Default is 60
   :config
@@ -642,6 +640,7 @@
   :custom
   (recentf-max-menu-items 25)
   (recentf-max-saved-items 25)
+  (recentf-auto-cleanup (* 60 60)) ;; cleanup every hour
   :config
   (recentf-mode +1)
   ;; Save every 15 minutes
@@ -715,30 +714,14 @@
     "dj" 'dired-jump))
 #+end_src
 
+| =auctex= | [[https://www.gnu.org/software/auctex/][AUCTeX]]   |
+| =tex=    | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; TODO: is there a way to refactor this?
-;; (use-package latex
-;;   :straight auctex
-;;   :commands latex-mode
-;;   :config
-;;   (latex-math-mode 1))
-
 (use-package tex-site
   :load-path "site-lisp/auctex/"
-  ;; :commands latex-mode
-  ;; :mode ("\\.tex\\'" . latex-mode)
+  :mode ("\\.tex\\'" . latex-mode)
   :init
   (setq reftex-plug-into-AUCTeX t))
-  
-
-;; (use-package reftex
-;;   :straight auctex
-;;   :commands reftex-mode
-;;   :custom
-;;   (reftex-plug-into-AUCTeX t)
-;;   (reftex-use-external-file-finders t)
-;;   :hook
-;;   (latex-mode . reftex-mode))
 
 (use-package tex
   :after tex-site
@@ -826,8 +809,11 @@
   :straight t
   :commands (vterm vterm-other-window)
   :custom
-  (vterm-kill-buffer-on-exit t) ;; kill the buffer when quitting the session
+  ; kill the buffer when quitting the session
+  (vterm-kill-buffer-on-exit t)
   (vterm-max-scrollback my/term-history-size)
+  ; Compile without vterm-module without asking first
+  (vterm-always-compile-module t)
   :config
   (defun my/vterm-setup-cursor ()
     "Adjust the evil-cursor for the terminal."
@@ -845,15 +831,15 @@
 #+begin_src emacs-lisp :tangle yes
 (use-package elpher
   :straight t
-  :commands elpher-go
+  :commands (elpher-go elpher-bookmarks)
   :custom
   (elpher-use-tls t)
   (elpher-ipv4-always t))
 #+end_src
 
+A Git Porcelain inside Emacs.
 | =magit= | [[https://magit.vc/][Magit]] |
 #+begin_src emacs-lisp :tangle yes
-;; A Git Porcelain inside Emacs.
 (use-package magit
   :straight t
   :defer t
@@ -905,28 +891,6 @@
         ("S-TAB"     . company-select-previous))
   :hook
   ((prog-mode org-mode) . company-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(defvar my/prev-whitespace-mode nil)
-(make-variable-buffer-local 'my/prev-whitespace-mode)
-
-(defun my/pre-popup-draw ()
-  "Turn off whitespace mode before showing company complete tooltip"
-  (if whitespace-mode
-      (progn
-        (setq my/prev-whitespace-mode t)
-        (whitespace-mode -1)
-        (setq my/prev-whitespace-mode t))))
-(defun my/post-popup-draw ()
-  "Restore previous whitespace mode after showing company tooltip"
-  (if my/prev-whitespace-mode
-      (progn
-        (whitespace-mode +1)
-        (setq my/prev-whitespace-mode nil))))
-
-(advice-add 'company-pseudo-tooltip-unhide :before #'my/pre-popup-draw)
-(advice-add 'company-pseudo-tooltip-hide :after #'my/post-popup-draw)
 #+end_src
 
 | =yasnippet=          | [[https://github.com/joaotavora/yasnippet][Github]] |
@@ -998,29 +962,28 @@
   :after yasnippet
   :commands eglot-ensure
   :custom
-  (eglot-autoreconnect 10) ;; reconnect after failure if the previous connection lastest at least 10 seconds
-  (eglot-autoshutdown t) ;; Shut down the server after killing the last buffer
-  ;; Tell elgot to perform these checks
-  (eglot-strict-mode '(enforce-required-keys))
+  ; reconnect after failure if the previous connection lastest at least 10 seconds
+  (eglot-autoreconnect 10)
+  ; Shut down the server after killing the last buffer
+  (eglot-autoshutdown t)
+  ; Unfortuantely there are some servers which are not compliant with the LSP
+  (eglot-strict-mode '())
   :config
   (setq read-process-output-max (* 5 1024 1024)) ;; 5mb
   (add-to-list 'eglot-stay-out-of 'company)
   (setq eglot-server-programs
-      (append '((yaml-mode . ("yaml-language-server" "--stdio"))
-                (dockerfile-mode . ("docker-langserver" "--stdio"))
+      (append '((yaml-mode         . ("yaml-language-server" "--stdio"))
+                (dockerfile-mode   . ("docker-langserver" "--stdio"))
                 ((c++-mode c-mode) . "clangd")
-                (rust-mode "rust-analyzer")
-                (mhtml-mode "")
-                ;; FIXME: doesn't work!
-                (vue-mode . ("vls" "--stdio"))
-                (css-mode . ("css-languageserver" "--stdio"))
-                ;; TODO: setup eglot-ensure for this one
-                (sql-mode . ("sql-language-server" "up" "--method" "stdio")))
+                (rust-mode           "rust-analyzer")
+                (json-mode         . ("json-languageserver" "--stdio"))
+                (mhtml-mode        . ("html-languageserver" "--stdio"))
+                (vue-mode          . ("vls" "--stdio"))
+                (ts-tsx-mode       . ("typescript-language-server" "--stdio"))
+                (css-mode          . ("css-languageserver" "--stdio"))
+                (sql-mode          . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
-  ;; FIXME: doesnt work (see rust)
-  (defun my/eglot-format-buffer-before-save ()
-    "Format the buffer with eglot before saving it"
-    (add-hook 'before-save-hook #'eglot-format-buffer nil 'local))
+  (add-hook 'before-save-hook #'eglot-format-buffer 90 t)
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
@@ -1051,8 +1014,7 @@
    "css" 'eglot-shutdown
    "csr" 'eglot-reconnect)
   :hook
-  (eglot-mode . eldoc-mode)
-  (eglot-mode . my/eglot-format-buffer-before-save))
+  (eglot-mode . eldoc-mode))
 #+end_src
 
 | =rust-mode= | [[https://github.com/rust-lang/rust-mode][Github]] |
@@ -1116,40 +1078,51 @@
   :hook (c++-mode . eglot-ensure))
 #+end_src
 
+| =web-mode= | [[https://github.com/fxbois/web-mode][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package web-mode
+  :straight t
+  :commands web-mode
+  :custom
+  ; e.g. s/ expands to <span>|</span>.
+  (web-mode-enable-auto-expanding t)
+  ; adding quotes after  `=` in a tag conflicts with React
+  (web-mode-enable-auto-quoting nil))
+#+end_src
+
 | =js-mode= | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; Works for *.js, *.jsx and *.json files
+; Works for *.js, *.jsx and files
 (use-package js
-  :commands js-mode
   :config
   (setq-default js-indent-level 2)
   :hook (js-mode . eglot-ensure))
 #+end_src
 
-| =js-mode= | [[https://github.com/emacs-typescript/typescript.el][Github]] |
+| =typescript-mode= | [[https://github.com/emacs-typescript/typescript.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package typescript-mode
   :straight t
-  :mode "\\.tsx?\\'"
+  :mode "\\.ts\\'"
   :config
   (setq-default typescript-indent-level 2)
   :hook (typescript-mode . eglot-ensure))
-#+end_src
 
-| =web-mode= | [[https://github.com/fxbois/web-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; TODO: configure pairing and quoting
-;; REVIEW: other usecases for web-mode besides vue.js?
-(use-package web-mode
-  :straight t
-  :commands web-mode)
+; Unlike js-mode typescript-mode doesn't have support for React files
+(define-derived-mode ts-tsx-mode
+  web-mode "Typescript React.js"
+  "Major mode for tsx-files."
+  (setq web-mode-code-indent-offset 2))
+
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . ts-tsx-mode))
+(add-hook 'ts-tsx-mode-hook #'eglot-ensure)
 #+end_src
 
 | =vue-mode= | Custom |
 #+begin_src emacs-lisp :tangle yes
 (define-derived-mode vue-mode
   web-mode "Vue.js"
-  "Major mode for vue.js files."
+  "Major mode for vue-files."
   (setq web-mode-code-indent-offset 2))
 
 (add-to-list 'auto-mode-alist '("\\.vue\\'" . vue-mode))
@@ -1159,27 +1132,31 @@
 | =sgml-mode= | Built-in |
 | =css-mode=  | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; TODO: rethink sgml-mode mhtml-mode and html-mode
 (use-package sgml-mode
-  :disabled t
-  :commands sgml-mode
   :custom
   (sgml-basic-offset 2)
   :hook
   (sgml-mode . eglot-ensure))
 
 (use-package css-mode
-  :commands css-mode
   :custom
   (css-indent-offset 2)
   :hook
   (css-mode . eglot-ensure))
 #+end_src
 
-| yaml-mode | [[https://github.com/yoshiki/yaml-mode][Github]] |
-| nix-mode  | [[https://github.com/NixOS/nix-mode][Github]] |
+| =vue-mode=  | Custom |
+| =yaml-mode= | [[https://github.com/yoshiki/yaml-mode][Github]] |
+| =nix-mode=  | [[https://github.com/NixOS/nix-mode][Github]] |
 #+begin_src emacs-lisp :tangle yes
 ;; NOTE: js-mode covers json-files
+(define-derived-mode json-mode
+  js-mode "JSON"
+  "Major mode for json-files.")
+
+(add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
+; use the json-languageserver
+(add-hook 'json-mode-hook #'eglot-ensure)
 
 (use-package yaml-mode
   :straight t
@@ -1192,14 +1169,36 @@
   :mode "\\.nix\\'")
 #+end_src
 
+
+| =prettier= | [[https://github.com/jscheid/prettier.el][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package prettier
+  :straight t
+  :commands (prettier-mode prettier-prettify prettier-prettify-region)
+  :custom
+  (prettier-inline-errors-flag t)
+  (prettier-pre-warm 'none)
+  :config
+  ; by setting the depth to 100 we're making sure
+  ; that this will be run after eglot-format-buffer
+  (add-hook 'before-save-hook #'prettier-prettify 100 t)
+  :hook ((js-mode
+          typescript-mode
+          vue-mode
+          mhtml-mode
+          css-mode
+          json-mode
+          yaml-mode)
+  . prettier-mode))
+#+end_src
+
 | =restclient= | [[https://github.com/pashky/restclient.el][Github]] |
 #+begin_src emacs-lisp :tangle yes
 (use-package restclient
   :straight t
-  :commands restclient-mode
   :mode (("\\.http\\'" . restclient-mode)))
 
-;; REVIEW: custom binding? formatting?
+; REVIEW: custom bindings? formatting (prettier)?
 #+end_src
 
 | =sh-script= | Built-in |
@@ -1207,7 +1206,7 @@
 (use-package sh-script
   :commands sh-mode
   :custom
-  (sh-basic-offset 4) ;; Default value
+  (sh-basic-offset 4) ; Default value
   :hook
   (sh-mode . eglot-ensure))
 #+end_src
@@ -1224,7 +1223,6 @@
 #+begin_src emacs-lisp :tangle yes
 (use-package markdown-mode
   :straight t
-  :commands (markdown-mode gfm-mode)
   :mode (("README\\.md\\'" . gfm-mode)
          ("\\.md\\'"       . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
@@ -1325,7 +1323,9 @@
 (defun my/kill-all-buffers ()
   "kill all buffers without regard for their origin."
   (interactive)
-  (mapc 'kill-buffer (buffer-list)))
+  (mapc 'kill-buffer (buffer-list))
+  ; Change the default directory back to $HOME
+  (cd "~/"))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1356,10 +1356,6 @@
   (add-hook 'after-init-hook #'server-start t))
 (custom-set-variables '(server-kill-new-buffers t))
 (add-hook 'server-done-hook #'delete-frame)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; TODO: Buffer-mode!
 #+end_src
 
 | =desktop= | Built-in |
@@ -1426,7 +1422,7 @@
   :innermodes '(poly-css-expr-js-innermode)
   (define-key poly-js-css-mode-map (kbd "C-c C-c") 'polymode-eval-chunk))
 
-;; TODO: add this mode for ts ass well
+;; TODO: add this mode for ts(x) as well
 (add-to-list 'auto-mode-alist '("\\.jsx?\\'" . poly-js-css-mode))
 #+end_src
 

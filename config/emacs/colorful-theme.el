@@ -1,53 +1,83 @@
-;; SEE: https://github.com/sonph/onehalf
+;;; colorful-theme.el --- A colorful color scheme
+;; -*- lexical-binding: t; -*-
 
-(deftheme onehalf "Onehalf theme")
+;; Copyright (C) 2021  Bastian Hussi
 
-(defgroup onehalf nil
-  "Onehalf options"
+;; Author: Bastian Hussi
+;; Keywords: faces
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+;;; Code:
+(deftheme colorful "Colorful theme")
+
+(defgroup colorful nil
+  "Colorful options"
   :group 'faces)
 
-(defcustom onehalf-height-title-1 1.3
-  "Lorem"
+(defcustom colorful-height-title-1 1.3
+  "Height of level 1 heading"
   :type 'number
-  :group 'onehalf)
+  :group 'colorful)
 
-(defcustom onehalf-height-title-2 1.2
-  "Lorem"
+(defcustom colorful-height-title-2 1.2
+  "Height of level 2 heading"
   :type 'number
-  :group 'onehalf)
+  :group 'colorful)
 
-(defcustom onehalf-height-title-3 1.1
-  "Lorem"
+(defcustom colorful-height-title-3 1.1
+  "Height of level 3 heading"
   :type 'number
-  :group 'onehalf)
+  :group 'colorful)
 
-(defface onehalf-black
-  '((t :foreground "black"
-       :background "aquamarine"
-       :weight bold
-       :underline t
-       ))
-  "Lorem"
-  :group 'onehalf)
+;; TODO: use these variables!
+(defcustom colorful-italic-strings t
+  "Italicize strings"
+  :type 'boolean
+  :group 'colorful)
+
+(defcustom colorful-italic-comments t
+  "Italicize comments"
+  :type 'boolean
+  :group 'colorful)
 
 ;;;; Color Constants
 (let ((class '((class color) (min-colors #xFFFFFF)))
   ;; dark
-  (black      "#282C34")
-  (red        "#E06C75")
-  (green      "#98C379")
-  (yellow     "#E5C07B")
-  (blue       "#61AFEF")
-  (purple     "#C678DD")
-  (cyan       "#56B6C2")
-  (white      "#DCDFE4")
-  (comment    "#5C6370")
-  (grey       "#919BAA")
-  (selection  "#474E5D")
-  (fg         "#DCDFE4")
-  (bg         "#282C34"))
+  (black        "#362036")
+  (black-faded  "#533153")
+  (red          "#DD3E79")
+  (red-faded    "#E56997")
+  (orange       "#CB433E")
+  (orange-faded "#D66A66")
+  (green        "#3EDDA2")
+  (green-faded  "#69E5B7")
+  (yellow       "#FAB80E")
+  (yellow-faded "#FBC740")
+  (blue         "#0E50FA")
+  (blue-faded   "#4074FB")
+  (purple       "#A775BA")
+  (purple-faded "#BD97CB")
+  (cyan         "#3EC6CB")
+  (cyan-faded   "#66D2D6")
+  (white        "#FCFBFD")
+  (white-faded  "#EAE6F0")
+  (grey         "#CFC6DD")
+  (fg           "#362036")
+  (bg           "#FCFBFD"))
   (custom-theme-set-faces
-    'onehalf
+    'colorful
     ; base
     `(default ((,class (:foreground ,fg :background ,bg))))
     `(fringe ((,class (:foreground ,fg :background ,bg))))
@@ -57,80 +87,66 @@
     `(bold-italic ((,class (:weigh bold :slant italic))))
     `(link ((,class (:foreground ,blue :underline t))))
     `(link-visited ((,class (:foreground ,purple :underline t))))
-    `(region ((,class (:background ,grey)))) ;; selection
+    `(region ((,class (:background ,purple-faded)))) ;; selection
     `(error ((,class (:foreground ,red))))
-    `(warning ((,class (:foreground ,yellow))))
+    `(warning ((,class (:foreground ,orange))))
     `(success ((,class (:foreground ,green))))
-    `(highlight ((,class (:background ,cyan))))
-    `(lazy-highlight ((,class (:background ,cyan))))
+    `(highlight ((,class (:background ,cyan :foreground ,white))))
+    `(lazy-highlight ((,class (:inherit highlight))))
     ; hl-line
-    `(hl-line ((,class (:background ,selection))))
+    `(hl-line ((,class (:background ,white-faded))))
     ; minibuffer
-    `(minibuffer-prompt ((,class (:foreground ,comment))))
+    `(minibuffer-prompt ((,class (:foreground ,white-faded))))
     ; ivy
     `(ivy-current-match ((,class (:inherit hl-line))))
-    `(ivy-minibuffer-match-face-1 ((,class (:background ,purple))))
-    `(ivy-minibuffer-match-face-2 ((,class (:background ,green))))
-    `(ivy-minibuffer-match-face-3 ((,class (:background ,yellow))))
-    `(ivy-minibuffer-match-face-4 ((,class (:background ,cyan))))
+    `(ivy-minibuffer-match-face-1 ((,class (:background ,purple-faded))))
+    `(ivy-minibuffer-match-face-2 ((,class (:background ,cyan-faded))))
+    `(ivy-minibuffer-match-face-3 ((,class (:background ,yellow-faded))))
+    `(ivy-minibuffer-match-face-4 ((,class (:background ,purple-faded))))
     `(ivy-minibuffer-match-highlight ((,class (:inherit lazy-highlight))))
-    `(ivy-highlight-face ((,class (:background ,selection))))
+    `(ivy-highlight-face ((,class (:background ,blue-faded))))
     `(ivy-confirm-face ((,class (:foreground ,blue))))
     `(ivy-match-required-face ((,class (:inherit warning))))
-    `(ivy-virtual ((,class (:background ,selection))))
-    `(ivy-modified-buffer ((,class (:foreground ,comment))))
+    `(ivy-virtual ((,class (:background ,white-faded))))
+    `(ivy-modified-buffer ((,class (:foreground ,white-faded))))
     `(swiper-match-face-1 ((,class (:inherit ivy-minibuffer-match-face-1))))
     `(swiper-match-face-2 ((,class (:inherit ivy-minibuffer-match-face-2))))
     `(swiper-match-face-3 ((,class (:inherit ivy-minibuffer-match-face-3))))
     `(swiper-match-face-4 ((,class (:inherit ivy-minibuffer-match-face-4))))
     ; font-lock
     `(font-lock-builtin-face ((,class (:foreground ,purple))))
-    `(font-lock-comment-face ((,class (:foreground ,comment :slant italic))))
+    `(font-lock-comment-face ((,class (:foreground ,grey))))
     `(font-lock-comment-delimiter-face ((,class (:inherit font-lock-comment-face))))
     `(font-lock-doc-face ((,class (:inherit font-lock-comment-face))))
-    `(font-lock-keyword-face ((,class (:foreground ,blue))))
+    `(font-lock-keyword-face ((,class (:foreground ,orange))))
     `(font-lock-variable-face ((,class (:foreground ,red))))
     `(font-lock-type-face ((,class (:foreground ,yellow))))
-    `(font-lock-constant-face ((,class (:foreground ,cyan :weight bold))))
+    `(font-lock-constant-face ((,class (:foreground ,cyan))))
     `(font-lock-function-face ((,class (:foreground ,blue))))
     `(font-lock-function-name-face ((,class (:foreground ,purple))))
-    `(font-lock-string-face ((,class (:foreground ,green :slant italic))))
+    `(font-lock-string-face ((,class (:foreground ,green))))
     `(font-lock-warning-face ((,class (:foreground ,red))))
     `(font-lock-preprocessor-face ((,class (:foreground ,blue))))
     `(font-lock-negation-char-face ((,class (:foreground ,purple))))
     ; line-number
     `(line-number ((,class (:foreground ,fg :background ,bg))))
-    `(line-number-current-line ((,class (:foreground ,yellow :background ,selection))))
+    `(line-number-current-line ((,class (:foreground ,yellow :background ,white-faded))))
     ; tab-bar
-    `(tab-bar ((,class (:foreground ,fg :background ,bg))))
-    `(tab-bar-tab ((,class (:background ,selection))))
-    `(tab-bar-tab-group-current ((,class (:background ,selection))))
-    `(tab-bar-tab-group-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-ungrouped ((,class (:background ,bg))))
-    ; tab-bar
-    `(tab-bar ((,class (:foreground ,fg :background ,bg))))
-    `(tab-bar-tab ((,class (:background ,selection))))
-    `(tab-bar-tab-group-current ((,class (:background ,selection))))
-    `(tab-bar-tab-group-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-ungrouped ((,class (:background ,bg))))
-    ; tab-bar
-    `(tab-bar ((,class (:foreground ,fg :background ,bg))))
-    `(tab-bar-tab ((,class (:background ,selection))))
-    `(tab-bar-tab-group-current ((,class (:background ,selection))))
-    `(tab-bar-tab-group-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-inactive ((,class (:background ,bg))))
-    `(tab-bar-tab-ungrouped ((,class (:background ,bg))))
+    `(tab-bar ((,class (:inherit default))))
+    `(tab-bar-tab ((,class (:background ,black-faded :foreground ,white-faded))))
+    `(tab-bar-tab-inactive ((,class (:inherit tab-bar))))
+    `(tab-bar-tab-group-current ((,class (:inherit tab-bar-tab))))
+    `(tab-bar-tab-group-inactive ((,class (:inherit tab-bar-tab-inactive))))
+    `(tab-bar-tab-ungrouped ((,class (:inherit tab-bar))))
     ; show-parens
     `(show-paren-match ((,class (:background ,purple))))
     `(show-paren-mismatch ((,class (:background ,red))))
     ; whitespace-mode
-    `(whitespace-empty ((,class (:inherit default))))
-    `(whitespace-space ((,class (:inherit default :foreground ,grey))))
-    `(whitespace-newline ((,class (:inherit default :foreground ,grey))))
-    `(whitespace-tab ((,class (:background ,selection :foreground ,grey))))
-    `(whitespace-indentation ((,class (:inherit default))))
+    `(whitespace-empty ((,class (:background nil))))
+    `(whitespace-space ((,class (:background nil :foreground ,white-faded))))
+    `(whitespace-newline ((,class (:background nil :foreground ,white-faded))))
+    `(whitespace-tab ((,class (:background nil :foreground ,white-faded))))
+    `(whitespace-indentation ((,class (:background nil))))
     `(whitespace-trailing ((,class (:background ,red))))
     `(whitespace-line ((,class (:foreground ,red :weight bold))))
     ; mu4e
@@ -139,28 +155,28 @@
     `(mu4e-highlight-face ((,class (:background ,purple))))
     `(mu4e-header-highlight-face ((,class (:background ,green))))
     `(mu4e-unread-face ((,class (:foreground ,blue :weight bold))))
-    `(mu4e-trashed-face ((,class (:foreground ,comment :strike-through t))))
+    `(mu4e-trashed-face ((,class (:foreground ,white-faded :strike-through t))))
     ; mode-line
-    `(mode-line ((,class (:background ,selection :foreground ,fg))))
-    `(mode-line-inactive ((,class (:background ,bg :foreground ,comment))))
+    `(mode-line ((,class (:background ,black-faded :foreground ,white-faded))))
+    `(mode-line-inactive ((,class (:background ,bg :foreground ,black-faded))))
     `(mode-line-emphasis ((,class (:inherit mode-line))))
     `(mode-line-highlight ((,class (:inherit mode-line))))
     ; company
-    `(company-tooltip ((,class (:background ,bg :foreground ,comment))))
+    `(company-tooltip ((,class (:background ,bg :foreground ,white-faded))))
     `(company-tooltip-common ((,class (:background ,bg :foreground ,fg))))
-    `(company-tooltip-search ((,class (:background ,bg :foreground ,grey))))
-    `(company-tooltip-search-selection ((,class (:background ,bg :foreground ,comment))))
+    `(company-tooltip-search ((,class (:background ,bg :foreground ,white-faded))))
+    `(company-tooltip-search-selection ((,class (:background ,bg :foreground ,white-faded))))
     ; company
-    `(company-tooltip-selection ((,class (:background ,selection))))
+    `(company-tooltip-selection ((,class (:background ,black-faded))))
     `(company-tooltip-annotation ((,class (:foreground ,red))))
     `(company-scrollbar-bg ((,class (:background ,bg))))
     `(company-scrollbar-fg ((,class (:background ,fg))))
     `(company-tooltip-common ((,class (:background ,bg :foreground ,fg))))
     `(company-tooltip-common-selection ((,class (:background ,bg :foreground ,fg))))
     ; outline
-    `(outline-1 ((,class (:inherit bold :height ,onehalf-height-title-1))))
-    `(outline-2 ((,class (:inherit bold :height ,onehalf-height-title-2))))
-    `(outline-3 ((,class (:inherit bold :height ,onehalf-height-title-3))))
+    `(outline-1 ((,class (:inherit bold :height ,colorful-height-title-1))))
+    `(outline-2 ((,class (:inherit bold :height ,colorful-height-title-2))))
+    `(outline-3 ((,class (:inherit bold :height ,colorful-height-title-3))))
     `(outline-4 ((,class (:inherit bold))))
     `(outline-2 ((,class (:inherit bold))))
     `(outline-3 ((,class (:inherit bold))))
@@ -172,7 +188,7 @@
     ; org-mode
     `(org-table ((,class (:foreground ,blue))))
     `(org-block ((,class (:inherit default))))
-    `(org-block-begin-line ((,class (:background ,grey))))
+    `(org-block-begin-line ((,class (:background ,white-faded))))
     `(org-block-end-line ((,class (:inherit org-block-begin-line))))
     `(org-level-1 ((,class (:inherit outline-1 :foreground ,purple))))
     `(org-level-2 ((,class (:inherit outline-2 :foreground ,green))))
@@ -241,7 +257,7 @@
     `(which-key-local-map-description-face ((,class (:foreground ,blue))))
     ; dired
     `(dired-directory ((,class (:foreground ,green))))
-    `(dired-ignored ((,class (:foreground ,comment))))
+    `(dired-ignored ((,class (:foreground ,white-faded))))
     `(dired-flagged ((,class (:foreground ,purple))))
     `(dired-header ((,class (:foreground ,red))))
     `(dired-mark ((,class (:foreground ,yellow))))
@@ -250,9 +266,16 @@
     `(dired-symlink ((,class (:foreground ,cyan))))
     `(dired-warning ((,class (:inherit warning))))))
 
-
+;;;###autoload
 (when (and (boundp 'custom-theme-load-path) load-file-name)
   (add-to-list 'custom-theme-load-path
     (file-name-as-directory (file-name-directory load-file-name))))
 
-(provide-theme 'onehalf)
+(provide-theme 'colorful)
+
+;; Local Variables:
+;; no-byte-compile: t
+;; indent-tabs-mode: nil
+;; End:
+
+;;; colorful-theme.el ends here
