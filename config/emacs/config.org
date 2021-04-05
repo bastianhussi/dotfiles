@@ -187,6 +187,7 @@
 | =colorful-theme= | Custom |
 #+begin_src emacs-lisp :tangle yes
 (use-package colorful-theme
+  :if (display-graphic-p)
   :load-path default-directory
   :init
   (setq custom-safe-themes t
@@ -326,7 +327,7 @@
 ;; NOTE: This overrides SPC in every keymap except insert
 ;; TODO: understand how this works? This is just trail and error for now
 (general-create-definer my/leader-def
-  :states '(normal insert visual motion emacs)
+  :states '(normal insert visual motion replace emacs)
   :keymaps 'override
   :prefix my/leader-key ;; normal-state
   :non-normal-prefix my/leader-fallback-key) ;; insert-state
@@ -383,14 +384,21 @@
 
 | =disable-mouse= | [[https://github.com/purcell/disable-mouse][Github]] |
 #+begin_src emacs-lisp :tangle yes
+;; TODO: https://www.gnu.org/software/emacs/manual/html_node/emacs/Mouse-Avoidance.html
+(use-package avoid
+  :commands mouse-avoidance-mode
+  :custom
+  (mouse-avoidance-mode 'banish)
+  :hook (window-setup . mouse-avoidance-mode))
+
 (use-package disable-mouse
   :straight t
   :config
   (mapc #'disable-mouse-in-keymap
-        (list evil-motion-state-map
-              evil-normal-state-map
+        (list evil-normal-state-map
+              evil-insert-state-map
               evil-visual-state-map
-              evil-insert-state-map))
+              evil-motion-state-map))
   :hook (after-init . global-disable-mouse-mode))
 #+end_src
 
@@ -534,9 +542,11 @@
   (whitespace-style '(face spaces space-mark tabs tab-mark space-before-tab space-after-tab
                            newline newline-mark trailing lines-tail))
   :config
-  (add-hook 'before-save-hook #'whitespace-cleanup -10 t)
+  (defun my/whitespace-write-contents ()
+    (add-hook 'write-contents-functions #'whitespace-cleanup -90 t))
   :hook
-  (prog-mode       . whitespace-mode))
+  (prog-mode       . whitespace-mode)
+  (whitespace-mode . my/whitespace-write-contents))
 #+end_src
 
 | =simple= | Built-in |
@@ -640,7 +650,7 @@
   :custom
   (recentf-max-menu-items 25)
   (recentf-max-saved-items 25)
-  (recentf-auto-cleanup (* 60 60)) ;; cleanup every hour
+  (recentf-auto-cleanup (* 60 60)) ; cleanup every hour
   :config
   (recentf-mode +1)
   ;; Save every 15 minutes
@@ -654,6 +664,15 @@
   :general
   (my/leader-def
     "p" '(:keymap project-prefix-map :which-key "Project")))
+#+end_src
+
+| =tramp= | Built-in |
+#+begin_src emacs-lisp :tangle yes
+;; TODO: defer
+(use-package tramp
+  :custom
+  (tramp-default-method "ssh")
+  (tramp-default-user user-login-name))
 #+end_src
 
 | =dired= | Built-in |
@@ -714,17 +733,25 @@
     "dj" 'dired-jump))
 #+end_src
 
-| =auctex= | [[https://www.gnu.org/software/auctex/][AUCTeX]]   |
-| =tex=    | Built-in |
 #+begin_src emacs-lisp :tangle yes
-(use-package tex-site
-  :load-path "site-lisp/auctex/"
-  :mode ("\\.tex\\'" . latex-mode)
-  :init
-  (setq reftex-plug-into-AUCTeX t))
+(use-package latex
+  :straight auctex
+  :commands LaTeX-mode
+  :mode ("\\.tex\\'" . LaTeX-mode)
+  :config
+  (LaTeX-math-mode 1))
+
+(use-package reftex
+  :straight auctex
+  :commands reftex-mode
+  :custom
+  (reftex-plug-into-AUCTeX t)
+  (reftex-use-external-file-finders t)
+  :hook
+  (LaTeX-mode . reftex-mode))
 
 (use-package tex
-  :after tex-site
+  :after latex
   :custom
   (TeX-PDF-mode t)
   (TeX-auto-save t)
@@ -732,7 +759,8 @@
   :config
   (setq-default TeX-master nil)
   :hook
-  (TeX-after-compilation-finished-functions . TeX-revert-document-buffer))
+  (TeX-after-compilation-finished-functions
+   . TeX-revert-document-buffer))
 #+end_src
 
 | =org= | [[https://orgmode.org/][Org Mode]] |
@@ -770,11 +798,143 @@
   (org-mode . org-indent-mode))
 #+end_src
 
+[[https://github.com/Somelauw/evil-org-mode/blob/master/evil-org-agenda.el][Evil Org Mode]]
+#+begin_src emacs-lisp :tangle yes
+(evil-set-initial-state 'org-agenda-mode 'motion)
+(evil-define-key 'motion org-agenda-mode-map
+  ;; Unused keys: D, X
+  ;; open
+  (kbd "<tab>") 'org-agenda-goto
+  (kbd "TAB") 'org-agenda-goto
+  (kbd "S-<return>") 'org-agenda-goto
+  (kbd "S-RET") 'org-agenda-goto
+  (kbd "<return>") 'org-agenda-switch-to
+  (kbd "RET") 'org-agenda-switch-to
+  (kbd "M-<return>") 'org-agenda-recenter
+  (kbd "M-RET") 'org-agenda-recenter
+  (kbd "SPC") 'org-agenda-show-and-scroll-up
+  (kbd "<delete>") 'org-agenda-show-scroll-down
+  (kbd "DEL") 'org-agenda-show-scroll-down
+  ;; motion
+  "j" 'org-agenda-next-line
+  "k" 'org-agenda-previous-line
+  "gj" 'org-agenda-next-item
+  "gk" 'org-agenda-previous-item
+  "gH" 'evil-window-top
+  "gM" 'evil-window-middle
+  "gL" 'evil-window-bottom
+  (kbd "C-j") 'org-agenda-next-item
+  (kbd "C-k") 'org-agenda-previous-item
+  (kbd "[[") 'org-agenda-earlier
+  (kbd "]]") 'org-agenda-later
+  ;; manipulation
+  "J" 'org-agenda-priority-down
+  "K" 'org-agenda-priority-up
+  "H" 'org-agenda-do-date-earlier
+  "L" 'org-agenda-do-date-later
+  "t" 'org-agenda-todo
+  (kbd "M-j") 'org-agenda-drag-line-forward
+  (kbd "M-k") 'org-agenda-drag-line-backward
+  (kbd "C-S-h") 'org-agenda-todo-previousset ; Original binding "C-S-<left>"
+  (kbd "C-S-l") 'org-agenda-todo-nextset ; Original binding "C-S-<right>"
+  ;; undo
+  "u" 'org-agenda-undo
+  ;; actions
+  "dd" 'org-agenda-kill
+  "dA" 'org-agenda-archive
+  "da" 'org-agenda-archive-default-with-confirmation
+  "ct" 'org-agenda-set-tags
+  "ce" 'org-agenda-set-effort
+  "cT" 'org-timer-set-timer
+  "i" 'org-agenda-diary-entry
+  "a" 'org-agenda-add-note
+  "A" 'org-agenda-append-agenda
+  "C" 'org-agenda-capture
+  ;; mark
+  "m" 'org-agenda-bulk-toggle
+  "~" 'org-agenda-bulk-toggle-all
+  "*" 'org-agenda-bulk-mark-all
+  "%" 'org-agenda-bulk-mark-regexp
+  "M" 'org-agenda-bulk-unmark-all
+  "x" 'org-agenda-bulk-action
+  ;; refresh
+  "gr" 'org-agenda-redo
+  "gR" 'org-agenda-redo-all ; rebuild all
+  ;; quit
+  "ZQ" 'org-agenda-exit
+  "ZZ" 'org-agenda-quit
+  ;; display
+  ;; "Dispatch" can prefix the following:
+  ;; 'org-agenda-toggle-deadlines
+  ;; 'org-agenda-toggle-diary
+  ;; 'org-agenda-follow-mode
+  ;; 'org-agenda-log-mode
+  ;; 'org-agenda-entry-text-mode
+  ;; 'org-agenda-toggle-time-grid
+  ;; 'org-agenda-day-view
+  ;; 'org-agenda-week-view
+  ;; 'org-agenda-year-view
+  "gD" 'org-agenda-view-mode-dispatch
+  "ZD" 'org-agenda-dim-blocked-tasks
+  ;; filter
+  "sc" 'org-agenda-filter-by-category
+  "sr" 'org-agenda-filter-by-regexp
+  "se" 'org-agenda-filter-by-effort
+  "st" 'org-agenda-filter-by-tag
+  "s^" 'org-agenda-filter-by-top-headline
+  "ss" 'org-agenda-limit-interactively
+  "S" 'org-agenda-filter-remove-all
+  ;; clock
+  "I" 'org-agenda-clock-in ; Original binding
+  "O" 'org-agenda-clock-out ; Original binding
+  "cg" 'org-agenda-clock-goto
+  "cc" 'org-agenda-clock-cancel
+  "cr" 'org-agenda-clockreport-mode
+  ;; go and show
+  "." 'org-agenda-goto-today
+  "gc" 'org-agenda-goto-calendar
+  "gC" 'org-agenda-convert-date
+  "gd" 'org-agenda-goto-date
+  "gh" 'org-agenda-holidays
+  "gm" 'org-agenda-phases-of-moon
+  "gs" 'org-agenda-sunrise-sunset
+  "gt" 'org-agenda-show-tags
+  "p" 'org-agenda-date-prompt
+  "P" 'org-agenda-show-the-flagging-note
+  ;; 'org-save-all-org-buffers ; Original binding "C-x C-s"
+  ;; Others
+  "+" 'org-agenda-manipulate-query-add
+  "-" 'org-agenda-manipulate-query-subtract)
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(evil-define-key 'normal org-mode-map
+  "gh" 'outline-up-heading
+  "gp" 'outline-previous-heading
+  "gj" 'org-forward-heading-same-level
+  "gk" 'org-backward-heading-same-level
+  "gl" 'outline-next-visible-heading
+  "t" 'org-todo
+  "T" 'org-insert-todo-heading
+  "H" 'org-shiftleft
+  "J" 'org-shiftdown
+  "K" 'org-shiftup
+  "L" 'org-shiftright
+  ; "o" 'org-insert-heading
+  "$" 'org-end-of-line
+  "^" 'org-beginning-of-line
+  "<" 'org-metaleft
+  ">" 'org-metaright
+  "-" 'org-cycle-list-bullet
+  (kbd "<tab>") 'org-cycle
+  (kbd "S-TAB") 'org-cycle)
+#+end_src
+
 #+begin_src emacs-lisp :tangle yes
 (defun my/exec-path-from-shell ()
   "Ensure environment variables are the same as in the user's shell."
-  ;; Get the value of the PATH-variable and split the string at the ':'-character.
-  (let ((path-from-shell (shell-command-to-string "$SHELL -lic 'echo $PATH'")))
+  ;; Get the value of the PATH-variable and split at the ':'-character.
+  (let ((path-from-shell (shell-command-to-string "$SHELL -lc 'echo $PATH'")))
     (setq exec-path (split-string path-from-shell path-separator))))
 
 ;; Defer running this function: This can take up to 0.1 seconds.
@@ -782,9 +942,10 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
+(require 'ansi-color)
+
 (defun colorize-compilation-buffer ()
   "Colorize the compilation buffer and get escapes parsed."
-  (require 'ansi-color)
   (ansi-color-apply-on-region compilation-filter-start (point-max)))
 
 (add-hook 'compilation-filter-hook #'colorize-compilation-buffer)
@@ -793,7 +954,7 @@
 | =eshell= | Built-in |
 | =vterm=  | [[https://github.com/akermu/emacs-libvterm][Github]]   |
 #+begin_src emacs-lisp :tangle yes
-(defvar my/term-history-size 5000)
+(defconst my/term-history-size 5000)
 
 ;; TODO: configure
 (use-package eshell
@@ -807,7 +968,12 @@
 
 (use-package vterm
   :straight t
+  :if (and (executable-find "cmake")
+           (executable-find "libtool"))
   :commands (vterm vterm-other-window)
+  :init
+  (defalias 'term 'vterm)
+  (evil-ex-define-cmd "term" 'vterm)
   :custom
   ; kill the buffer when quitting the session
   (vterm-kill-buffer-on-exit t)
@@ -820,11 +986,14 @@
     (setq-local evil-move-cursor-back nil
                 evil-insert-state-cursor 'box))
   :bind
-  ([remap term] . #'vterm)
+  ;; ([remap term] . #'vterm)
   (:map vterm-mode-map
         ("C-y"  . evil-paste-after))
   :hook
-  (vterm-mode . my/vterm-setup-cursor))
+  (vterm-mode . my/vterm-setup-cursor)
+  ; Make sure the buffer name is unique, so that we can use multiple
+  ; vterm buffers at the same time
+  (vterm-mode . rename-uniquely))
 #+end_src
 
 | =elpher= | [[https://thelambdalab.xyz/elpher/][The Lambda Lab]] |
@@ -929,13 +1098,11 @@ A Git Porcelain inside Emacs.
   (ispell-dictionary "en_US,de_DE")
   :config
   (ispell-set-spellchecker-params)
-  (ispell-hunspell-add-multi-dic "en_US,de_DE"))
+  (ispell-hunspell-add-multi-dic ispell-dictionary))
 #+end_src
 
 | =flymake= | Built-in |
 #+begin_src emacs-lisp :tangle yes
-(my/leader-def "n" '(:ignore t :which-key "Navigate"))
-
 (use-package flymake
   :commands flymake-mode
   :config
@@ -950,7 +1117,7 @@ A Git Porcelain inside Emacs.
     ("G"  (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
     ("q"  nil))
   :general
-  (my/leader-def "ne" '(my/hydra-flymake/body :which-key "Errors"))
+  (my/leader-def "e" '(my/hydra-flymake/body :which-key "Errors"))
   :hook (prog-mode . flymake-mode))
 #+end_src
 
@@ -959,14 +1126,13 @@ A Git Porcelain inside Emacs.
 ;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
   :straight t
-  :after yasnippet
   :commands eglot-ensure
   :custom
-  ; reconnect after failure if the previous connection lastest at least 10 seconds
+  ; only reconnect after failure if the previous connection lastest more then 10 sec
   (eglot-autoreconnect 10)
   ; Shut down the server after killing the last buffer
   (eglot-autoshutdown t)
-  ; Unfortuantely there are some servers which are not compliant with the LSP
+  ; Unfortuantely there are some servers which are not compliant with the LSP-specification
   (eglot-strict-mode '())
   :config
   (setq read-process-output-max (* 5 1024 1024)) ;; 5mb
@@ -983,7 +1149,8 @@ A Git Porcelain inside Emacs.
                 (css-mode          . ("css-languageserver" "--stdio"))
                 (sql-mode          . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
-  (add-hook 'before-save-hook #'eglot-format-buffer 90 t)
+  (defun my/eglot-write-contents ()
+    (add-hook 'write-contents-functions #'eglot-format-buffer 90 t))
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
@@ -1014,7 +1181,8 @@ A Git Porcelain inside Emacs.
    "css" 'eglot-shutdown
    "csr" 'eglot-reconnect)
   :hook
-  (eglot-mode . eldoc-mode))
+  (eglot-mode . eldoc-mode)
+  (eglot-mode . my/eglot-write-contents))
 #+end_src
 
 | =rust-mode= | [[https://github.com/rust-lang/rust-mode][Github]] |
@@ -1023,20 +1191,19 @@ A Git Porcelain inside Emacs.
   :straight t
   :mode "\\.rs\\'"
   :config
-  (defun my/rust-adjust-fill-column ()
-    "Adjust the fill-column variable for rust-mode."
+  (defun my/rust-fill-column ()
     (setq-local fill-column 99
                 indent-tabs-mode nil))
   :bind
   (:map rust-mode-map
       ("C-c C-c" . rust-run)
       ("C-c C-t" . rust-test)
-      ;; ("C-c C-c" . rust-check)
+      ("C-c C-v" . rust-check)
       ("C-c C-l" . rust-run-clippy)
       ("C-c C-b" . rust-compile))
   :hook
   (rust-mode . eglot-ensure)
-  (rust-mode . my/rust-adjust-fill-column))
+  (rust-mode . my/rust-fill-column))
 #+end_src
 
 | =go-mode= | [[https://github.com/dominikh/go-mode.el][Github]] |
@@ -1045,6 +1212,7 @@ A Git Porcelain inside Emacs.
   :straight t
   :mode "\\.go\\'"
   :config
+  ;; REVIEW: does this work?
   (setq-local indent-tabs-mode t
               tab-width 2)
   :hook (go-mode . eglot-ensure))
@@ -1181,7 +1349,8 @@ A Git Porcelain inside Emacs.
   :config
   ; by setting the depth to 100 we're making sure
   ; that this will be run after eglot-format-buffer
-  (add-hook 'before-save-hook #'prettier-prettify 100 t)
+  (defun my/prettier-write-contents ()
+    (add-hook 'write-contents-functions #'prettier-prettify 10 t))
   :hook ((js-mode
           typescript-mode
           vue-mode
@@ -1189,7 +1358,8 @@ A Git Porcelain inside Emacs.
           css-mode
           json-mode
           yaml-mode)
-  . prettier-mode))
+  . prettier-mode)
+  (prettier-mode . my/prettier-write-contents))
 #+end_src
 
 | =restclient= | [[https://github.com/pashky/restclient.el][Github]] |
@@ -1262,11 +1432,13 @@ A Git Porcelain inside Emacs.
 
 #+begin_src emacs-lisp :tangle yes
 ;; text-scale-adjust looks at the last key typed to determine which action to take.
+(global-set-key (kbd "C-=") 'text-scale-adjust)
 (global-set-key (kbd "C-+") 'text-scale-adjust)
 (global-set-key (kbd "C--") 'text-scale-adjust)
 (global-set-key (kbd "C-0") 'text-scale-adjust)
 #+end_src
 
+Prefer vertical splitting when the frame is fullscreen.
 #+begin_src emacs-lisp :tangle yes
 ;; prefer vertical splitting when the frame is fullscreen.
 (setq split-height-threshold 50
@@ -1326,6 +1498,11 @@ A Git Porcelain inside Emacs.
   (mapc 'kill-buffer (buffer-list))
   ; Change the default directory back to $HOME
   (cd "~/"))
+
+(defun my/kill-other-buffers ()
+  "Kill all other buffers."
+  (interactive)
+  (mapc 'kill-buffer (delq (current-buffer) (buffer-list))))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -1335,6 +1512,7 @@ A Git Porcelain inside Emacs.
   "q"  '(:ignore t :which-key "Quit")
   "qb" '(kill-this-buffer :which-key "This buffer")
   "qa" '(my/kill-all-buffers :which-key "All buffers")
+  "qo" '(my/kill-other-buffers :which-key "Other buffers")
   "qq" '(save-buffers-kill-terminal :which-key "Emacs"))
 #+end_src
 
@@ -1367,9 +1545,9 @@ A Git Porcelain inside Emacs.
   :custom
   (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
   (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
-  ;; only restore one buffer immediately. The rest is loaded lazy.
+  ; only restore one buffer immediately. The rest is loaded lazy.
   (desktop-restore-eager 1)
-  ;; don't restore the frame and window configuration
+  ; don't restore the frame and window configuration
   (desktop-restore-frames nil)
   :config
   (setq history-length 250)
@@ -1381,7 +1559,7 @@ A Git Porcelain inside Emacs.
                   (magit-revision-history . 50))
                 desktop-globals-to-save))
   ;; REVIEW: desktop-globals-to-clear
-  ;; TODO: not store dired, tramp, eglot
+  ;; TODO: do not store dired, tramp, eglot
   :hook
   (after-init . desktop-read)
   (after-init . desktop-save-mode))
