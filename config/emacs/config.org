@@ -13,8 +13,7 @@
     (require 'gnutls))
   ;; Path to self signed certificates.
   (add-to-list 'gnutls-trustfiles
-               (expand-file-name "ssl/certs/*.pem"
-                                 (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+               (expand-file-name "ssl/certs/*.pem" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
   ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
   (setq gnutls-verify-error :trustfiles
         gnutls-min-prime-bits 4096))
@@ -33,32 +32,44 @@
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
-
-;; Install and use use-package
-(straight-use-package 'use-package)
 #+end_src
 
+| =use-package= | [[https://github.com/jwiegley/use-package][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(straight-use-package 'use-package)
+;; Report about loading packages in the message buffer
+;; NOTE: when using this feature you need to require use-package in each file using it.
+(setq use-package-verbose t
+      ;; Gather statistics
+      use-package-compute-statistics t)
+#+end_src
+
+Startup
 #+begin_src emacs-lisp :tangle yes
 ;; Prevent the startup message about GNU Emacs and the GNU system
 (fset 'display-startup-echo-area-message 'ignore)
-;; Typing out yes / no is waaaaay to tedious
-(fset 'yes-or-no-p 'y-or-n-p)
-#+end_src
 
-#+begin_src emacs-lisp :tangle yes
 (setq inhibit-splash-screen t
       inhibit-startup-screen t
       inhibit-startup-message t
       initial-scratch-message nil
-      initial-major-mode 'org-mode
-      confirm-kill-emacs 'y-or-n-p
+      initial-major-mode 'org-mode)
+#+end_src
+
+Dialogs
+#+begin_src emacs-lisp :tangle yes
+;; Typing out yes / no is waaaaay to tedious
+(fset 'yes-or-no-p 'y-or-n-p)
+
+(setq confirm-kill-emacs 'y-or-n-p
       ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
       use-dialog-box nil
       use-file-dialog nil)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(setq-default warning-minimum-level :error)
+(setq-default warning-minimum-level :error
+              warning-minimum-log-level :warning)
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -72,14 +83,13 @@
 #+begin_src emacs-lisp :tangle yes
 (use-package faces
   :commands my/faces-fontset-emojis
-  :init
-  ;; Prevent the default font from displaying symbols
-  (setq use-default-font-for-symbols nil)
   :custom-face
   (variable-pitch ((t (:family "Cantarell"      :height 150))))
   (fixed-pitch    ((t (:family "Fira Code"      :height 160))))
   (default        ((t (:family "JetBrains Mono" :height 160))))
   :config
+  ;; Prevent the default font from displaying symbols
+  (setq use-default-font-for-symbols nil)
   (defun my/faces-fontset-emojis ()
     "Enable colorful emojis."
     (set-fontset-font t 'symbol "Noto Color Emoji")
@@ -144,7 +154,6 @@
 | =epa-file= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package epa-file
-  :commands epa-file-enable
   :custom
    ;; cache passphrase for symmetric encryption.
   (epa-file-cache-passphrase-for-symmetric-encryption t)
@@ -163,6 +172,7 @@
 
 | =files= | Built-in |
 #+begin_src emacs-lisp :tangle yes
+;; REVIEW: is the use of `use-package' really necessary here?
 (use-package files
   :defer t
   :custom
@@ -187,7 +197,6 @@
 | =colorful-theme= | Custom |
 #+begin_src emacs-lisp :tangle yes
 (use-package colorful-theme
-  :if (display-graphic-p)
   :load-path default-directory
   :init
   (setq custom-safe-themes t
@@ -197,7 +206,12 @@
   (colorful-height-title-2 1.2)
   (colorful-height-title-3 1.1)
   :config
-  (load-theme 'colorful))
+  (defun my/load-theme ()
+    (when (display-graphic-p)
+        (load-theme 'colorful)))
+  :hook
+  (window-setup            . my/load-theme)
+  (server-after-make-frame . my/load-theme))
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -206,9 +220,9 @@
   (let* ((available-width (- (window-width) (length left))))
     (format (format "%%s %%%ds" available-width) left right)))
 
-(defconst my/mode-line-separator (propertize " " 'face '(:inherit nil)))
+(defconst MY/MODE-LINE-SEPARATOR (propertize " " 'face '(:inherit nil)))
 
-;; REVIEW: defer this? (use window-setup-hook)
+;; REVIEW: defer this? (use `window-setup-hook')
 ;; TODO: split this into functions and move this into its own file
 (setq-default
  mode-line-format
@@ -217,14 +231,14 @@
      ;; Left hand side
      (format-mode-line
       (list
-       my/mode-line-separator
+       MY/MODE-LINE-SEPARATOR
        '(:eval (cond
                 ((eq evil-state 'normal) (propertize " <N> " 'face '(:background "green")))
                 ((eq evil-state 'insert) (propertize " <I> " 'face '(:background "red")))
                 ((eq evil-state 'visual) (propertize " <V> " 'face '(:background "yellow")))
                 ((eq evil-state 'motion) (propertize " <M> " 'face '(:background "orange")))
                 (t "<*>")))
-       my/mode-line-separator
+       MY/MODE-LINE-SEPARATOR
        ;; Highlight the file name if there are unsaved changes
        (if (and buffer-file-name (buffer-modified-p))
            (propertize "%b" 'face '(:foreground "red"))
@@ -234,11 +248,11 @@
      (format-mode-line
       (list
        '(vc-mode vc-mode)
-       my/mode-line-separator
+       MY/MODE-LINE-SEPARATOR
        "%4l:%C"
-       my/mode-line-separator
+       MY/MODE-LINE-SEPARATOR
        "%p%%"
-       my/mode-line-separator
+       MY/MODE-LINE-SEPARATOR
        ))))))
 #+end_src
 
@@ -251,7 +265,7 @@
 (use-package evil
   :straight t
   :init
-  (evil-mode +1)
+  (evil-mode +1) ; this has to be loaded before the rest of the package
   :custom
   (evil-want-keybinding nil)
   (evil-want-integration t)
@@ -321,16 +335,16 @@
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
-(defconst my/leader-key "SPC")
-(defconst my/leader-fallback-key "C-SPC")
+(defconst MY/LEADER-KEY "SPC")
+(defconst MY/LEADER-FALLBACK-KEY "C-SPC")
 
 ;; NOTE: This overrides SPC in every keymap except insert
 ;; TODO: understand how this works? This is just trail and error for now
 (general-create-definer my/leader-def
   :states '(normal insert visual motion replace emacs)
   :keymaps 'override
-  :prefix my/leader-key ;; normal-state
-  :non-normal-prefix my/leader-fallback-key) ;; insert-state
+  :prefix MY/LEADER-KEY ;; normal-state
+  :non-normal-prefix MY/LEADER-FALLBACK-KEY) ;; insert-state
 #+end_src
 
 #+begin_src emacs-lisp :tangle yes
@@ -382,24 +396,56 @@
                 "j" 'evil-normal-state))
 #+end_src
 
-| =disable-mouse= | [[https://github.com/purcell/disable-mouse][Github]] |
 #+begin_src emacs-lisp :tangle yes
-;; TODO: https://www.gnu.org/software/emacs/manual/html_node/emacs/Mouse-Avoidance.html
-(use-package avoid
-  :commands mouse-avoidance-mode
-  :custom
-  (mouse-avoidance-mode 'banish)
-  :hook (window-setup . mouse-avoidance-mode))
+(defun my/insert-adiaeresis ()
+  (interactive)
+  (insert "ä"))
+
+(defun my/insert-odiaeresis ()
+  (interactive)
+  (insert "ö"))
+
+(defun my/insert-udiaeresis ()
+  (interactive)
+  (insert "ü"))
+
+(define-minor-mode my/umlaut-mode
+  "Insert a German umlaut by typing the vowel followed by the character e"
+  :lighter "Insert German umlaut by "
+  :keymap (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "a")
+              (general-key-dispatch 'self-insert-command
+                "e" 'my/insert-adiaeresis))
+            (define-key map (kbd "o")
+              (general-key-dispatch 'self-insert-command
+                "e" 'my/insert-odiaeresis))
+            (define-key map (kbd "u")
+              (general-key-dispatch 'self-insert-command
+                "e" 'my/insert-udiaeresis))
+            map))
+#+end_src
+
+Hide the mouse cursor in the bottom left corner of the screen.
+| =avoid=         | [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Mouse-Avoidance.html][Built-in]] |
+| =disable-mouse= | [[https://github.com/purcell/disable-mouse][Github]]   |
+#+begin_src emacs-lisp :tangle yes
+(mouse-avoidance-mode 'banish)
+(setq mouse-avoidance-banish-position
+      '((frame-or-window . frame)
+        (side . right)
+        (side-pos . 0)
+        (top-or-bottom . bottom)
+        (top-or-bottom-pos . 0)))
 
 (use-package disable-mouse
   :straight t
   :config
   (mapc #'disable-mouse-in-keymap
-        (list evil-normal-state-map
-              evil-insert-state-map
+        (list evil-motion-state-map
+              evil-normal-state-map
               evil-visual-state-map
-              evil-motion-state-map))
-  :hook (after-init . global-disable-mouse-mode))
+              evil-insert-state-map))
+  :hook (window-setup . global-disable-mouse-mode))
 #+end_src
 
 | =hydra= | [[https://github.com/abo-abo/hydra][Github]] |
@@ -427,14 +473,12 @@
 | =hl-line=              | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package display-line-numbers
-  :commands display-line-numbers-mode
   :custom
   (display-line-numbers-type 'relative)
   :hook ((text-mode prog-mode) . display-line-numbers-mode))
 
 ;; Highlight the current line.
 (use-package hl-line
-  :commands hl-line-mode
   :custom
   ;; Only hightlight the current line in the active window
   (hl-line-sticky-flag nil)
@@ -443,34 +487,48 @@
 
 #+begin_src emacs-lisp :tangle yes
 ;; SEE: https://www.gnu.org/software/emacs/manual/html_node/emacs/Font-Lock.html
+;; FIXME: `font-lock-constant-face' is already bold
 (defun my/hl-todo ()
   "Highlight TODO and similar keywords."
   (font-lock-add-keywords
-   nil '(("\\(\\<\\(TODO\\)\\>[:]*\\)"       1 '((t :inherit success :weight bold)) t)
-         ("\\(\\<\\(FIXME\\)\\>[:]*\\)"      1 '((t :inherit error :weight bold)) t)
-         ("\\(\\<\\(HACK\\)\\>[:]*\\)"       1 '((t :inherit error :weight bold)) t)
-         ("\\(\\<\\(DEBUG\\)\\>[:]*\\)"      1 '((t :inherit warning :weight bold)) t)
-         ("\\(\\<\\(NOTE\\)\\>[:]*\\)"       1 '((t :inherit success :weight bold)) t)
-         ("\\(\\<\\(SEE\\)\\>[:]*\\)"        1 '((t :inherit success :weight bold)) t)
-         ("\\(\\<\\(REVIEW\\)\\>[:]*\\)"     1 '((t :foreground "blue" :weight bold)) t)
-         ("\\(\\<\\(DEPRECATED\\)\\>[:]*\\)" 1 '((t :foreground "blue" :weight bold)) t))))
+   nil '(("\\(\\<\\(TODO\\)\\>[:]*\\)" 1
+          '((nil :inherit warning :weight bold)) t)
+         ("\\(\\<\\(FIXME\\)\\>[:]*\\)" 1
+          '((nil :inherit error :weight bold)) t)
+         ("\\(\\<\\(HACK\\)\\>[:]*\\)" 1
+          '((nil :inherit font-lock-constant-face :weight bold)) t)
+         ("\\(\\<\\(DEBUG\\)\\>[:]*\\)" 1
+          '((nil :inherit font-lock-constant-face :weight bold)) t)
+         ("\\(\\<\\(NOTE\\)\\>[:]*\\)" 1
+          '((nil :inherit success :weight bold)) t)
+         ("\\(\\<\\(SEE\\)\\>[:]*\\)" 1
+          '((nil :inherit success :weight bold :slant italic)) t)
+         ("\\(\\<\\(REVIEW\\)\\>[:]*\\)" 1
+          '((nil :inherit font-lock-keyword-face :weight bold)) t)
+         ("\\(\\<\\(DEPRECATED\\)\\>[:]*\\)" 1
+          '((nil :inherit font-lock-doc-face :weight bold)) t))))
 
+;; This is buffer local
 (add-hook 'prog-mode-hook #'my/hl-todo)
 #+end_src
 
 | =tab-bar= | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; Use tabs within Emacs. The tabbar is only visible when two or more tabs are open
-;; NOTE: no need to enable tab-bar-mode. If there is more than one tab the mode will be enable automatically.
+;; NOTE: no need to enable tab-bar-mode. If there is more than one tab
+;; open at the same time the mode will be enable automatically.
+;; TODO: review now settings that came with Emacs 28
 (use-package tab-bar
   :commands tab-bar-mode
   :custom
+  (tab-bar-show 1) ; hide the tab bar when it has only one tab
   (tab-bar-close-button-show nil) ;; Don't show buttons
   (tab-bar-new-button-show nil)
   (tab-bar-history-buttons-show nil)
   (tab-bar-new-tab-choice "*scratch*") ;; New tabs will show the scratch-buffer
   (tab-bar-new-tab-to 'rightmost)  ;; Always add new tabs to the rightmost position
+  ;; (tab-bar-close-last-tab-choice delete-frame)
   :config
+  ;; NOTE: gt and gT are alreay mapped by evil-collection in normal state
   (defhydra my/hydra-tab-bar (:color amaranth)
     "Tab Bar Operations"
     ("t"   tab-new "Create a new tab" :column "Action")
@@ -486,7 +544,7 @@
     ("q"   nil "Quit" :exit t))
   :general
   (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs"))
-  ;; remember window configurations used in every tab
+  ;; remember window configurations used in every tab (undo / redo)
   :hook (tab-bar-mode . tab-bar-history-mode))
 #+end_src
 
@@ -494,6 +552,16 @@
 | =eldoc= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; TODO: setup eldoc
+(use-package eldoc
+  :commands eldoc-mode
+  :init
+  (global-eldoc-mode -1)
+  :custom
+  (eldoc-idle-delay 0.75)
+  (eldoc-echo-area-display-truncation-message nil)
+  (eldoc-echo-area-use-multiline-p 0.25) ; use 25% of the frame
+  (eldoc-documentation-strategy 'eldoc-documentation-compose-eagerly)
+  (eldoc-echo-area-prefer-doc-buffer 'maybe))
 
 ;; navigate back and forwards with </>-keys
 (use-package help
@@ -509,9 +577,8 @@
 #+begin_src emacs-lisp :tangle yes
 ;; Automatically insert closing pairs like ", ), ], }
 (use-package elec-pair
-  :commands electric-pair-mode
   :custom
-  (electric-pair-preserve-balance nil) ;; NOTE: This is the default value
+  (electric-pair-preserve-balance nil) ; (default)
   :hook (prog-mode . electric-pair-mode))
 #+end_src
 
@@ -519,7 +586,6 @@
 #+begin_src emacs-lisp :tangle yes
 ;; Highlight matching parenthesis
 (use-package paren
-  :commands show-paren-mode
   :custom
   (show-paren-delay 0.25)
   (show-paren-when-point-inside-paren t)
@@ -531,9 +597,8 @@
 #+begin_src emacs-lisp :tangle yes
 ;; Highlight some non printable characters like tabs and trailing spaces
 (use-package whitespace
-  :commands whitespace-mode
   :custom
-  (whitespace-line-column nil) ;; use the value of `fill-column`
+  (whitespace-line-column nil) ;; use the value of `fill-column'
   ;; https://github.com/hlissner/doom-emacs/issues/109
   (whitespace-display-mappings
    '((tab-mark ?\t [?» ?\t])
@@ -543,7 +608,13 @@
                            newline newline-mark trailing lines-tail))
   :config
   (defun my/whitespace-write-contents ()
-    (add-hook 'write-contents-functions #'whitespace-cleanup -90 t))
+    "Delete trailing whitespaces before saving."
+    ;; This is buffer-local by default
+    (add-hook 'write-contents-functions
+              (lambda()
+                (save-excursion
+                  (delete-trailing-whitespace)))
+              -90)) ; -100: run first / 100: rust last
   :hook
   (prog-mode       . whitespace-mode)
   (whitespace-mode . my/whitespace-write-contents))
@@ -551,33 +622,39 @@
 
 | =simple= | Built-in |
 #+begin_src emacs-lisp :tangle yes
-;; Auto break lines when hitting the fill-column limit
+;; Auto break lines when hitting the `fill-column' limit
 (use-package simple
-  :commands turn-on-auto-fill
-  :init
-  (global-visual-line-mode +1) ;; Soft wrap in all buffers
   :custom
-  (kill-ring-max 100) ;; Default is 60
+  (kill-ring-max 100) ; (default: 60)
   :config
   ;; Don't show a backslash when wrapping a line
   (set-display-table-slot standard-display-table 'wrap ?\ )
-  :hook
-  ;; enable auto-fill-mode for the current buffer
-  (prog-mode . turn-on-auto-fill))
+  (global-visual-line-mode +1) ; Soft wrap in all buffers
+  ;; Enable `auto-fill-mode' for the current buffer
+  :hook (prog-mode . auto-fill-mode))
 #+end_src
 
 | =ediff= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 ;; https://oremacs.com/2015/01/17/setting-up-ediff/
-;; TODO: defer loading
 (use-package ediff
+  :commands ediff-mode
   :custom
-  (ediff-window-setup-function 'ediff-setup-windows-plain)
-  (ediff-split-window-function 'split-window-horizontally)
-  (ediff-diff-options "-w") ;; ignore whitespaces
+  (ediff-window-setup-function #'ediff-setup-windows-plain)
+  (ediff-split-window-function #'split-window-horizontally)
+  (ediff-diff-options "-w") ; ignore whitespaces
   :config
   (ediff-setup-keymap)
-  (add-hook 'ediff-after-quit-hook-internal #'winner-undo))
+  (defun my/ediff-save-window-config ()
+    "Save the state of the window configuration before invoking ediff."
+    (setq ediff-saved-window-configuration
+          (current-window-configuration)))
+  (defun my/ediff-restore-window-config ()
+    "Restore the window configuration to how it used to be."
+    (set-window-configuration ediff-saved-window-configuration))
+  :hook
+  (ediff-before-setup         . my/ediff-save-window-config)
+  ((ediff-quit ediff-suspend) . my/ediff-restore-window-config))
 #+end_src
 
 | =ivy= | [[https://github.com/abo-abo/swiper][Github]] |
@@ -585,7 +662,6 @@
 ;; Ivy is a generic completion mechanism for Emacs.
 (use-package ivy
   :straight t
-  :commands ivy-mode
   :custom
   (ivy-wrap t)
   (ivy-height 12)
@@ -612,6 +688,7 @@
         ("TAB"         . ivy-next-line)
         ("<backtab>"   . ivy-previous-line)
         ("S-TAB"       . ivy-previous-line)
+        ("C-w"         . ivy-backward-kill-word)
         ("C-n"         . ivy-next-history-element)
         ("C-p"         . ivy-previous-history-element))
   :hook (after-init . ivy-mode))
@@ -619,9 +696,9 @@
 
 | =counsel= | [[https://github.com/abo-abo/swiper][Github]] |
 #+begin_src emacs-lisp :tangle yes
+;; NOTE: :after `ivy' doesn't work
 (use-package counsel
   :straight t
-  :commands counsel-mode
   :config
   (setenv "FZF_DEFAULT_COMMAND" "rg --files --hidden --follow --glob '!.git'")
   :bind
@@ -641,6 +718,28 @@
   :hook (ivy-mode . counsel-mode))
 #+end_src
 
+#+begin_src emacs-lisp :tangle yes
+(use-package prescient
+  :straight t
+  :commands prescient-persist-mode
+  :custom
+  (prescient-history-length 50) ; Remember the last 50 entries
+  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
+  (prescient-filter-method '(literal regexp fuzzy))) ; NOTE: not used for now
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+(use-package ivy-prescient
+  :straight t
+  :after counsel
+  :custom
+  (ivy-prescient-enable-filtering nil) ; Let ivy handle the filtering
+  (ivy-prescient-retain-classic-highlighting t) ; Keep classic highlighting
+  :config
+  (ivy-prescient-mode +1)
+  (prescient-persist-mode +1))
+#+end_src
+
 | =recentf= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package recentf
@@ -650,7 +749,13 @@
   :custom
   (recentf-max-menu-items 25)
   (recentf-max-saved-items 25)
-  (recentf-auto-cleanup (* 60 60)) ; cleanup every hour
+  (recentf-auto-cleanup "12:00pm") ; clear list at midnight
+  ;; No not remember these files
+  (recentf-exclude '("\\.lock\\'"
+                     "\\.log\\'"
+                     "\\.swa?p\\'"
+                     "\\.bak\\'"
+                     "\\~\\'"))
   :config
   (recentf-mode +1)
   ;; Save every 15 minutes
@@ -686,10 +791,10 @@
   (dired-listing-switches "-Ahlv --group-directories-first") ;; Change the arguments passed to ls
   (dired-hide-details-hide-symlink-targets nil) ;; ...
   (dired-recursive-copies 'always)
-  ;; Omit dotfiles (which are included by dired-listing-switches)
+  ;; Omit dotfiles (which are included by `dired-listing-switches')
   (dired-omit-files "^\\..*")
   :config
-  ;; use dired-find-alternate-file instead of dired-find-file to prevent dired to create so many buffers.
+  ;; use dired-find-alternate-file instead of `dired-find-file' to prevent dired to create so many buffers.
   (put 'dired-find-alternate-file 'disabled nil)
   ;; A hydra for conveniently using dired commands
   ;; TODO: close hydra when the dired buffer is killed
@@ -724,7 +829,7 @@
            :keymaps 'dired-mode-map
            "h" 'dired-up-directory
            "l" 'dired-find-file
-           ;; default 'dired-do-touch (change timestamp)
+           ;; default `dired-do-touch' (change timestamp)
            ;; "T" 'dired-create-empty-file
            "." 'my/hydra-dired/body)
   (my/leader-def
@@ -736,19 +841,16 @@
 #+begin_src emacs-lisp :tangle yes
 (use-package latex
   :straight auctex
-  :commands LaTeX-mode
   :mode ("\\.tex\\'" . LaTeX-mode)
   :config
   (LaTeX-math-mode 1))
 
 (use-package reftex
   :straight auctex
-  :commands reftex-mode
   :custom
   (reftex-plug-into-AUCTeX t)
   (reftex-use-external-file-finders t)
-  :hook
-  (LaTeX-mode . reftex-mode))
+  :hook (LaTeX-mode . reftex-mode))
 
 (use-package tex
   :after latex
@@ -763,13 +865,14 @@
    . TeX-revert-document-buffer))
 #+end_src
 
+Using the version of org that comes with Emacs by default.
+Installing org with straight caused a [[https://orgmode.org/worg/org-faq.html#mixed-install][mixed install]] somehow.
 | =org= | [[https://orgmode.org/][Org Mode]] |
 #+begin_src emacs-lisp :tangle yes
 ;; A major mode for convenient plain text markup - and much more.
 (use-package org
-  :straight t
   ;; defer the loading of org-mode possible. If any of the commands below
-  ;; get run befor this time load org-mode imediatly
+  ;; get run befor this time load `org-mode' imediatly
   :commands (org-mode org-agenda)
   :custom
   ;; use tab like in the language major mode
@@ -784,7 +887,7 @@
   (org-hide-leading-stars t) ;; Don't show all the stars in front of the headings
   (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
   (org-agenda-start-with-log-mode t)
-  (org-agenda-window-setup 'other-tab) ;; Open org-agenda in a new tab.
+  (org-agenda-window-setup 'other-tab) ;; Open `org-agenda' in a new tab.
   :config
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
   (add-to-list 'org-structure-template-alist '("py" . "src python"))
@@ -796,9 +899,11 @@
   :hook
   ;; Don't worry about indentation in the outline structure anymore
   (org-mode . org-indent-mode))
+
+;; TODO: org habits
 #+end_src
 
-[[https://github.com/Somelauw/evil-org-mode/blob/master/evil-org-agenda.el][Evil Org Mode]]
+[[https://github.com/Somelauw/evil-org-mode/blob/master/evil-org-agenda.el][Evil Org Agenda]]
 #+begin_src emacs-lisp :tangle yes
 (evil-set-initial-state 'org-agenda-mode 'motion)
 (evil-define-key 'motion org-agenda-mode-map
@@ -832,7 +937,7 @@
   "K" 'org-agenda-priority-up
   "H" 'org-agenda-do-date-earlier
   "L" 'org-agenda-do-date-later
-  "t" 'org-agenda-todo
+  "t" 'org-agenda-todo ; default
   (kbd "M-j") 'org-agenda-drag-line-forward
   (kbd "M-k") 'org-agenda-drag-line-backward
   (kbd "C-S-h") 'org-agenda-todo-previousset ; Original binding "C-S-<left>"
@@ -891,7 +996,7 @@
   "cc" 'org-agenda-clock-cancel
   "cr" 'org-agenda-clockreport-mode
   ;; go and show
-  "." 'org-agenda-goto-today
+  "." 'org-agenda-goto-today ; default
   "gc" 'org-agenda-goto-calendar
   "gC" 'org-agenda-convert-date
   "gd" 'org-agenda-goto-date
@@ -907,17 +1012,20 @@
   "-" 'org-agenda-manipulate-query-subtract)
 #+end_src
 
+Evil org mode
 #+begin_src emacs-lisp :tangle yes
+;; TODO: org-show-all , org-hide, ...
 (evil-define-key 'normal org-mode-map
   "gh" 'outline-up-heading
   "gp" 'outline-previous-heading
   "gj" 'org-forward-heading-same-level
   "gk" 'org-backward-heading-same-level
   "gl" 'outline-next-visible-heading
+  "go" 'org-open-at-point
   "t" 'org-todo
   "T" 'org-insert-todo-heading
   "H" 'org-shiftleft
-  "J" 'org-shiftdown
+  ; "J" 'org-shiftdown ; NOTE: this remaps `evil-join'
   "K" 'org-shiftup
   "L" 'org-shiftright
   ; "o" 'org-insert-heading
@@ -954,14 +1062,14 @@
 | =eshell= | Built-in |
 | =vterm=  | [[https://github.com/akermu/emacs-libvterm][Github]]   |
 #+begin_src emacs-lisp :tangle yes
-(defconst my/term-history-size 5000)
+(defconst MY/TERM-HISTORY-SIZE 5000)
 
 ;; TODO: configure
 (use-package eshell
   :commands eshell
   :custom
-  (eshell-history-size my/term-history-size)
-  (eshell-buffer-maximum-lines my/term-history-size)
+  (eshell-history-size MY/TERM-HISTORY-SIZE)
+  (eshell-buffer-maximum-lines MY/TERM-HISTORY-SIZE)
   (eshell-hist-ignoredups t)
   :hook
   (eshell-preoutput-filter-functions . ansi-color-filter-apply))
@@ -971,14 +1079,11 @@
   :if (and (executable-find "cmake")
            (executable-find "libtool"))
   :commands (vterm vterm-other-window)
-  :init
-  (defalias 'term 'vterm)
-  (evil-ex-define-cmd "term" 'vterm)
   :custom
   ; kill the buffer when quitting the session
   (vterm-kill-buffer-on-exit t)
-  (vterm-max-scrollback my/term-history-size)
-  ; Compile without vterm-module without asking first
+  (vterm-max-scrollback MY/TERM-HISTORY-SIZE)
+  ; Compile without `vterm-module' without asking first
   (vterm-always-compile-module t)
   :config
   (defun my/vterm-setup-cursor ()
@@ -986,13 +1091,13 @@
     (setq-local evil-move-cursor-back nil
                 evil-insert-state-cursor 'box))
   :bind
-  ;; ([remap term] . #'vterm)
+  ([remap term] . #'vterm)
   (:map vterm-mode-map
         ("C-y"  . evil-paste-after))
   :hook
   (vterm-mode . my/vterm-setup-cursor)
   ; Make sure the buffer name is unique, so that we can use multiple
-  ; vterm buffers at the same time
+  ; `vterm' buffers at the same time
   (vterm-mode . rename-uniquely))
 #+end_src
 
@@ -1004,6 +1109,59 @@
   :custom
   (elpher-use-tls t)
   (elpher-ipv4-always t))
+#+end_src
+
+| =writeroom-mode= | [[https://github.com/joostkremers/writeroom-mode][Github]] |
+#+begin_src emacs-lisp :tangle yes
+(use-package writeroom-mode
+  :straight t
+  :commands writeroom-mode
+  :custom
+  (writeroom-width 99) ; (default: 80)
+  (writeroom-bottom-divider-width 0)
+  (writeroom-extra-line-spacing 0.20)
+  (writeroom-restore-window-config t)
+  :config
+  ;; TODO: use auto-fill-mode
+  (defun my/disable-ui-elements ()
+    "Hide distracting elements of the ui."
+    (display-line-numbers-mode -1))
+  (defun my/enable-ui-elements ()
+    "Restore all elements of the ui."
+    (display-line-numbers-mode +1))
+  :general
+  (my/leader-def
+    "z"   '(writeroom-mode :which-key "Zen"))
+  :hook
+  (writeroom-mode-enable  . my/disable-ui-elements)
+  (writeroom-mode-disable . my/enable-ui-elements))
+#+end_src
+
+| =elfeed= | [[https://github.com/skeeto/elfeed][Github]] |
+#+begin_src emacs-lisp :tangle yes
+;; FIXME: hide cursor in elfeed search
+;; TODO: setup motion keymap for elfeed search like with org-agenda
+
+(use-package elfeed
+  :straight t
+  :defer 30
+  :commands elfeed
+  :custom
+  (elfeed-db-directory
+   (expand-file-name "elfeed" (or (getenv "XDG_CACHE_HOME") "~/.cache")))
+  (elfeed-show-entry-switch #'display-buffer) ; do not swith to the new buffer
+  (elfeed-feeds '(("https://nullprogram.com/feed/")
+                  ("https://reddit.com/r/emacs/.rss")))
+  :config
+  (setq url-queue-timeout 30)
+  (setq-default elfeed-search-filter "@1-week-ago +unread ")
+  (defun my/elfeed-cleanup ()
+    "Removed old feeds."
+    (elfeed-make-tagger :before "2 weeks ago"
+                        :remove 'unread))
+  :hook
+  (elfeed-db-update . elfeed-db-compact) ; compress the db after updating it
+  (elfeed-new-entry . my/elfeed-cleanup)) ; cleanup old feeds when receiving new
 #+end_src
 
 A Git Porcelain inside Emacs.
@@ -1033,7 +1191,6 @@ A Git Porcelain inside Emacs.
 #+begin_src emacs-lisp :tangle yes
 (use-package company
   :straight t
-  :commands company-mode
   :custom
   (company-backends
    '((company-capf :with company-yasnippet)
@@ -1067,7 +1224,6 @@ A Git Porcelain inside Emacs.
 #+begin_src emacs-lisp :tangle yes
 (use-package yasnippet
   :straight t
-  :commands yas-minor-mode
   :custom
   (yas-prompt-functions '(yas-completing-prompt))
   :config
@@ -1083,7 +1239,6 @@ A Git Porcelain inside Emacs.
 | =ispell=   | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package flyspell
-  :commands (flyspell-mode flyspell-prog-mode)
   :custom
   (flyspell-delay 0.25)
   (flyspell-issue-message-flag nil)
@@ -1104,7 +1259,6 @@ A Git Porcelain inside Emacs.
 | =flymake= | Built-in |
 #+begin_src emacs-lisp :tangle yes
 (use-package flymake
-  :commands flymake-mode
   :config
   (defhydra my/hydra-flymake
     (:pre (flymake-show-diagnostics-buffer)
@@ -1149,12 +1303,17 @@ A Git Porcelain inside Emacs.
                 (css-mode          . ("css-languageserver" "--stdio"))
                 (sql-mode          . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
+  ;; FIXME: this is never added to the hook
   (defun my/eglot-write-contents ()
-    (add-hook 'write-contents-functions #'eglot-format-buffer 90 t))
+    "Format the buffer before saving."
+    (add-hook 'write-contents-functions
+              (lambda()
+                (save-excursion
+                  (eglot-format-buffer)))
+              10))
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
-           "<f2>"   'eglot-rename
            "gd"     'xref-find-definitions
            "gr"     'xref-find-references
            "gD"     'eglot-find-declaration
@@ -1228,10 +1387,12 @@ A Git Porcelain inside Emacs.
   (python-shell-interpreter "python3")
   :hook (python-mode . eglot-ensure))
 
+;; REVIEW: is this buffer local?
 (use-package pyvenv
   :straight t
-  :commands pyvenv-mode
-  :hook (python-mode . pyvenv-mode))
+  :after python
+  :config
+  (pyvenv-mode +1))
 #+end_src
 
 | =c-mode=   | Built-in |
@@ -1342,15 +1503,18 @@ A Git Porcelain inside Emacs.
 #+begin_src emacs-lisp :tangle yes
 (use-package prettier
   :straight t
-  :commands (prettier-mode prettier-prettify prettier-prettify-region)
+  :commands (prettier-prettify prettier-prettify-region)
   :custom
   (prettier-inline-errors-flag t)
   (prettier-pre-warm 'none)
   :config
-  ; by setting the depth to 100 we're making sure
-  ; that this will be run after eglot-format-buffer
   (defun my/prettier-write-contents ()
-    (add-hook 'write-contents-functions #'prettier-prettify 10 t))
+    "Format the buffer with prettier before saving."
+    (add-hook 'write-contents-functions
+              (lambda()
+                (save-excursion
+                  (prettier-prettify)))
+              90))
   :hook ((js-mode
           typescript-mode
           vue-mode
@@ -1527,13 +1691,23 @@ Prefer vertical splitting when the frame is fullscreen.
 (evil-ex-define-cmd "lt"     'load-theme)
 #+end_src
 
+Start the server if it's not already running or using Emacs from a terminal
 | =server= | Built-in |
 #+begin_src emacs-lisp :tangle yes
-(require 'server)
-(unless (server-running-p)
-  (add-hook 'after-init-hook #'server-start t))
-(custom-set-variables '(server-kill-new-buffers t))
-(add-hook 'server-done-hook #'delete-frame)
+;; REVIEW: closing buffers like magit commit closes the entire frame
+;; REVIEW: rewrite this if necessary
+(use-package server
+  :if (display-graphic-p)
+  :config
+  (defun my/server-start-maybe ()
+    (unless (server-running-p)
+      (add-hook 'after-init-hook #'server-start t)))
+  :custom
+  (server-kill-new-buffers t)
+  (server-raise-frame t) ; raise new frames (default)
+  :hook
+  (server-done . delete-frame)
+  (after-init  . my/server-start-maybe))
 #+end_src
 
 | =desktop= | Built-in |
@@ -1541,7 +1715,6 @@ Prefer vertical splitting when the frame is fullscreen.
 ;; https://github.com/purcell/emacs.d/blob/master/lisp/init-sessions.el
 ;; https://www.emacswiki.org/emacs/DeskTop
 (use-package desktop
-  :commands (desktop-read desktop-save-mode)
   :custom
   (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
   (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
@@ -1550,7 +1723,9 @@ Prefer vertical splitting when the frame is fullscreen.
   ; don't restore the frame and window configuration
   (desktop-restore-frames nil)
   :config
+  ;; TODO: review these settings
   (setq history-length 250)
+  ;; TODO: do not store dired, tramp, eglot, *elfeed-search*, ...
   (setq desktop-globals-to-save
         (append '((file-name-history      . 100)
                   (minibuffer-history     . 50)
@@ -1558,8 +1733,14 @@ Prefer vertical splitting when the frame is fullscreen.
                   (ivy-history            . 100)
                   (magit-revision-history . 50))
                 desktop-globals-to-save))
-  ;; REVIEW: desktop-globals-to-clear
-  ;; TODO: do not store dired, tramp, eglot
+  ;; clear everything
+  ;; (setq desktop-globals-to-clear ...)
+  (defun my/desktop-delete ()
+    "Clear and remove the state of Emacs saved in a desktop file."
+    (interactive)
+    (desktop-clear) ; delete all saved buffers
+    (desktop-remove) ; delete the desktop-file
+    (desktop-save-mode -1)) ; do not ask to save the current state
   :hook
   (after-init . desktop-read)
   (after-init . desktop-save-mode))
@@ -1567,11 +1748,17 @@ Prefer vertical splitting when the frame is fullscreen.
 ;; REVIEW: (add-hook 'after-init-hook 'savehist-mode)
 #+end_src
 
+Minibuffer
+#+begin_src emacs-lisp :tangle yes
+(define-key minibuffer-local-map (kbd "C-w") 'backward-kill-word)
+;; backward-kill-sentence is bound to C-a C-k
+#+end_src
+
 #+begin_src emacs-lisp :tangle yes
 (add-hook 'after-init #'global-auto-revert-mode)
 ;; Enable folding by using hide-show-mode
 (add-hook 'prog-mode-hook #'hs-minor-mode)
-;; winner-mode is used in my/hydra-window and ediff
+;; winner-mode is used in my/hydra-window
 (add-hook 'window-setup-hook #'winner-mode)
 #+end_src
 
