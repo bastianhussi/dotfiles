@@ -1,14 +1,89 @@
+#+STARTUP: indent
+#+STARTUP: showeverything
+
+* General
 [[https://github.com/daedreth/UncleDavesEmacs/][Uncle Dave]]
 [[https://github.com/howardabrams/dot-files/][Howard Abrams]]
 [[https://github.com/angrybacon/dotemacs][Angrybacon]]
 [[https://config.daviwil.com/emacs][David Wilson]]
-[[https://gitlab.com/protesilaos/dotfiles][Protesilaos Stavrou]]
+[[https://protesilaos.com/dotemacs/][Protesilaos Stavrou]]
+[[https://gitlab.com/andreyorst/dotfiles][Andrey Listopadov]]
+[[https://github.com/novoid/dot-emacs/][Karl Voit]]
+[[https://github.com/pprevos/EmacsLife/blob/master/init.el.org][Peter Prevos]]
+[[https://github.com/bugswriter/BugsWritersEmacs][Suraj Kushwah]]
+[[https://gitlab.com/aimebertrand/dotfiles][Aimé Bertrand]]
+[[https://github.com/mrvdb/emacs-config][Marcel van der Boom]]
 
-#+begin_src emacs-lisp :tangle yes
-(setq user-full-name "Bastian Hussi")
+#+begin_src emacs-lisp :results silent
+(customize-set-variable 'user-full-name "Bastian Hussi")
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
+(custom-set-variables
+ '(warning-minimum-level :error)
+ '(warning-minimum-log-level :warning))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(let ((encoding 'utf-8))
+  ;; REVIEW: are all of these necessary?
+  (setq-default buffer-file-coding-system encoding)
+  (prefer-coding-system        encoding)
+  (set-language-environment    encoding)
+  (set-default-coding-systems  encoding)
+  (set-terminal-coding-system  encoding)
+  (set-keyboard-coding-system  encoding)
+  (set-selection-coding-system encoding))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; REVIEW: these settings
+;; ;; Make Emacs treat underscore as a word character
+;; (modify-syntax-entry ?_ "w")
+;; ;; Same for single quotation mark
+;; (modify-syntax-entry ?' "w")
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(setq-default fill-column 80
+              indent-tabs-mode nil
+              tab-width 4)
+
+(customize-set-variable 'tab-always-indent nil)
+;; REVIEW: 'tab-always-indent 'complete
+#+end_src
+
+** Startup
+#+begin_src emacs-lisp :results silent
+;; Prevent the startup message about GNU Emacs and the GNU system
+(fset 'display-startup-echo-area-message 'ignore)
+
+(setq inhibit-startup-screen t
+      ;; NOTE: Setting this option prevents desktop from presenting the last buffer
+      initial-buffer-choice nil ; dont open the `*scratch*' buffer unconditionally
+      initial-scratch-message nil
+      initial-major-mode 'org-mode)
+
+;; Don't write messages to the minibuffer
+;; (setq inhibit-message t)
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; REVIEW:
+;; (setq kill-buffer-query-functions
+;;       (delq 'process-kill-buffer-query-function kill-buffer-query-functions))
+
+(custom-set-variables
+ '(confirm-kill-emacs 'yes-or-no-p)
+ '(confirm-kill-processes nil) ; I always confirm
+ ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
+ '(use-dialog-box nil)
+ '(use-file-dialog nil))
+#+end_src
+
+** Packages
+#+begin_src emacs-lisp :results silent
+;; REVIEW: move straight to early-init.el?
 (defvar bootstrap-version)
 (let ((bootstrap-file
        (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
@@ -21,406 +96,176 @@
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
+
+;; REVIEW: use watch-files instead of check-on-save to catch changes made outside of Emacs?
+;; TODO: review more settings!
+(customize-set-variable 'straight-check-for-modifications '(find-when-checking check-on-save))
+
+;; NOTE: set this `straight-vc-git-default-protocol' to 'ssh for private repos
 #+end_src
 
 | =use-package= | [[https://github.com/jwiegley/use-package][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (straight-use-package 'use-package)
 ;; Report about loading packages in the message buffer
 ;; NOTE: when using this feature you need to require use-package in each file using it.
-(setq use-package-verbose t
-      ;; Gather statistics
-      use-package-compute-statistics t)
+(custom-set-variables
+ '(use-package-verbose t)
+ '(use-package-compute-statistics t))
 #+end_src
 
-Startup
-#+begin_src emacs-lisp :tangle yes
-;; Prevent the startup message about GNU Emacs and the GNU system
-(fset 'display-startup-echo-area-message 'ignore)
-
-(setq inhibit-splash-screen t
-      inhibit-startup-screen t
-      inhibit-startup-message t
-      initial-scratch-message nil
-      initial-major-mode 'org-mode)
-#+end_src
-
-Dialogs
-#+begin_src emacs-lisp :tangle yes
-;; Typing out yes / no is waaaaay to tedious
-(fset 'yes-or-no-p 'y-or-n-p)
-
-(setq confirm-kill-emacs 'y-or-n-p
-      ;; Do not use GTK-Dialogs (e.g. when for confirmation to kill Emacs)
-      use-dialog-box nil
-      use-file-dialog nil)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(setq-default warning-minimum-level :error
-              warning-minimum-log-level :warning)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(prefer-coding-system       'utf-8)
-(set-default-coding-systems 'utf-8)
-(set-terminal-coding-system 'utf-8)
-(set-keyboard-coding-system 'utf-8)
-(set-language-environment   'utf-8)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package faces
-  :custom-face
-  (variable-pitch ((t (:family "Cantarell" :height 150))))
-  (fixed-pitch    ((t (:family "Fira Code" :height 160))))
-  (default        ((t (:family "JetBrains Mono" :height 160))))
+| =exec-path-from-shell= | [[https://github.com/purcell/exec-path-from-shell][Github]] |
+#+begin_src emacs-lisp :results silent
+;; NOTE: do not defer this. Other packages may relay on this!
+(use-package exec-path-from-shell
+  :straight t
+  :custom
+  (exec-path-from-shell-arguments '("-l"))
   :config
-  ;; Prevent the default font from displaying symbols
-  (setq use-default-font-for-symbols nil)
-  (defun my/faces-fontset-emojis ()
-    "Enable colorful emojis."
-    (set-fontset-font t 'symbol "Noto Color Emoji")
-    (set-fontset-font t 'symbol "Symbola" nil 'append))
-  :hook
-  (window-setup            . my/faces-fontset-emojis)
-  (server-after-make-frame . my/faces-fontset-emojis))
+  (setq exec-path-from-shell-variables
+        (append '("GOPATH" "GOROOT")
+                exec-path-from-shell-variables))
+  (exec-path-from-shell-initialize))
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
+
+#+begin_src emacs-lisp :results silent
+;; NOTE: when changing environment variables inside of Emacs,
+;; make sure to do this before defining these variables.
+;; TODO: simplifiy syntax
+(defun my/find-xdg-dir (xdg fallback)
+  "Either return the matching XDG user directories
+or a generic fallback alternative.
+XDG is the name of the environment variable like $XDG_DOWNLOAD_DIR.
+FALLBACK will be expanded to an absolute path and returned if the
+variable doesn't exist"
+  (or (getenv xdg) (expand-file-name fallback)))
+
+;; FIXME: what about e.g. German names?
+(defconst MY/XDG-DESKTOP-DIR     (my/find-xdg-dir "$XDG_DESKTOP_DIR" "~/Desktop"))
+(defconst MY/XDG-DOCUMENTS-DIR   (my/find-xdg-dir "$XDG_DOCUMENTS_DIR" "~/Documents"))
+(defconst MY/XDG-DOWNLOAD-DIR    (my/find-xdg-dir "$XDG_DOWNLOAD_DIR" "~/Downloads"))
+(defconst MY/XDG-MUSIC-DIR       (my/find-xdg-dir "$XDG_MUSIC_DIR" "~/Music"))
+(defconst MY/XDG-PICTURES-DIR    (my/find-xdg-dir "$XDG_PICTURES_DIR" "~/Pictures"))
+(defconst MY/XDG-PUBLICSHARE-DIR (my/find-xdg-dir "$XDG_PUBLICSHARE_DIR" "~/Public"))
+(defconst MY/XDG-TEMPLATES-DIR   (my/find-xdg-dir "$XDG_TEMPLATES_DIR" "~/Templates"))
+(defconst MY/XDG-VIDEOS-DIR      (my/find-xdg-dir "$XDG_DESKTOP_DIR" "~/Videos"))
+(defconst MY/XDG-DATA-HOME       (my/find-xdg-dir "$XDG_DATA_HOME" "~/.local/share"))
+
+(defconst MY/XDG-CONFIG-HOME     (my/find-xdg-dir "$XDG_CONFIG_HOME" "~/.config"))
+(defconst MY/XDG-CACHE-HOME      (my/find-xdg-dir "XDG_CACHE_HOME" "~/.cache"))
+#+end_src
+
+* Interface
+** Fonts I like
+- Fira Code (l)
+- JetBrains Mono (l)
+- Cascadia Code (l)
+- Input Mono
+- Hack
+- Cantarell
+- Google Sans
+- Ubuntu Mono
+- Go Mono
+- Inconsolata
+- Haskling (based in Source Code Pro) (l)
+- Iosevka Term (l)
+  - SS09 :: Source Code Pro
+  - SS12 :: Ubuntu Mono
+  - SS14 :: JetBrains Mono
+** Fonts
+#+begin_src emacs-lisp :results silent
+;; REVIEW: https://gitlab.com/protesilaos/dotfiles/-/blob/master/emacs/.emacs.d/prot-lisp/prot-fonts.el
+;; characters
+(setq use-default-font-for-symbols nil)
+;; don’t compact font caches during GC.
+(setq inhibit-compacting-font-caches t)
+
+;; FIXME: scaling the font size doesnt work anymore!
+
+;; variable-pitch and fixed-pitch dont scale along
+(set-face-attribute 'default nil :family "Iosevka Term SS14" :height 160)
+
+;; Proportionately spaced typeface
+(set-face-attribute 'variable-pitch nil :family "Google Sans" :height 1.0)
+
+;; Monospaced typeface
+(set-face-attribute 'fixed-pitch nil :family "Cascadia Code" :height 1.0)
+
+;; TODO: find a font that has serifs and is monospaced
+;; REVIEW: is the increase in height ok? Is this used somewhere else than `writeroom-mode'?
+;; Monospaced serif typeface
+(set-face-attribute 'fixed-pitch-serif nil :family "Fira Code" :height 1.0)
+
+;; https://unicode.org/emoji/charts/full-emoji-list.html
+(set-fontset-font t 'symbol "Noto Color Emoji")
+
+;; Some neat symbols: 
+(set-fontset-font t 'symbol "OpenMoji Color" nil 'append)
+;; OpenMoji uses non-standard unicode blocks for additional emojis.
+;; Standard range: U+1F600..U+1F64F
+;; SEE: https://en.wikipedia.org/wiki/Private_Use_Areas
+(set-fontset-font t '(#xE000 . #xF8FF) "OpenMoji Color" nil 'prepend)
+
+;; Using Symbola for these: ○ ⦿ ◉
+(set-fontset-font t 'unicode "Symbola" nil 'append)
+
+;; HACK: I want the default-font these chars: ’
+;; (set-fontset-font t '#x2019 "Iosevka SS14")
+
+;; A tiny bit of extra line spacing
+(setq-default line-spacing 0.05)
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; REVIEW: is this defered?
 (use-package font-lock
-  :defer t
   :custom-face
   (font-lock-constant-face ((t (:weight bold))))
   (font-lock-comment-face  ((t (:slant italic))))
   (font-lock-string-face   ((t (:slant italic))))
-  :config
-  ;; Increase font-lock speed. Otherwise this may take some time.
-  ;; FIXME: speed up colorization in org code blocks
-  (setq jit-lock-stealth-time 0.12
-        jit-lock-stealth-nice 0.00))
+  ;; NOTE: too small values may cause freezes
+  (jit-lock-stealth-time 0.25)
+  (jit-lock-stealth-nice 0.12)
+  :hook (window-setup . font-lock-mode))
 #+end_src
 
 | =ligature= | [[https://github.com/mickeynp/ligature.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package ligature
-  :if (>= emacs-major-version 28)
+  :if (version<= "27.2" emacs-version)
   :straight '(:host github :repo "mickeynp/ligature.el")
-  :commands global-ligature-mode
   :config
+  (ligature-set-ligatures 't '("www"))
   (ligature-set-ligatures
-   'prog-mode '("www" "**" "***" "**/" "*>" "*/" "\\\\" "\\\\\\" "{-" "::"
-                ":::" ":=" "!!" "!=" "!==" "-}" "----" "-->" "->" "->>"
-                "-<" "-<<" "-~" "#{" "#[" "##" "###" "####" "#(" "#?" "#_"
-                "#_(" ".-" ".=" ".." "..<" "..." "?=" "??" ";;" "/*" "/**"
-                "/=" "/==" "/>" "//" "///" "&&" "||" "||=" "|=" "|>" "^=" "$>"
-                "++" "+++" "+>" "=:=" "==" "===" "==>" "=>" "=>>" "<="
-                "=<<" "=/=" ">-" ">=" ">=>" ">>" ">>-" ">>=" ">>>" "<*"
-                "<*>" "<|" "<|>" "<$" "<$>" "<!--" "<-" "<--" "<->" "<+"
-                "<+>" "<=" "<==" "<=>" "<=<" "<>" "<<" "<<-" "<<=" "<<<"
-                "<~" "<~~" "</" "</>" "~@" "~-" "~>" "~~" "~~>" "%%"))
-  ;; Enables ligature checks globally in all buffers.
-  :hook (window-setup . global-ligature-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(add-hook 'org-mode-hook
-          #'(lambda ()
-              (push '("[ ]" . ?○) prettify-symbols-alist)
-              (push '("[X]" . ?◉) prettify-symbols-alist)))
-
-(add-hook 'emacs-lisp-mode-hook
-          #'(lambda ()
-              (push '("lambda" . ?λ) prettify-symbols-alist)))
-
-(add-hook 'window-setup-hook #'global-prettify-symbols-mode)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Make Emacs treat underscore as a word character
-(modify-syntax-entry ?_ "w")
-;; Same for single quotation mark
-(modify-syntax-entry ?' "w")
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Hide the cursor in inactive windows
-(setq-default cursor-in-non-selected-windows nil
-              fill-column 80
-              indent-tabs-mode nil
-              tab-width 4
-              tab-always-indent nil)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(with-eval-after-load 'gnutls
-  (eval-when-compile
-    (require 'gnutls))
-  ;; Path to self signed certificates.
-  (add-to-list 'gnutls-trustfiles
-               (expand-file-name "ssl/certs/*.pem" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
-  ;; Do not cause an error when the hostname doesn't match the certificate’s host name.
-  (setq gnutls-verify-error :trustfiles
-        gnutls-min-prime-bits 4096))
-#+end_src
-
-| =epa-file= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package epa-file
-  :custom
-   ;; cache passphrase for symmetric encryption.
-  (epa-file-cache-passphrase-for-symmetric-encryption t)
-  ;; Any value other than t or nil will prevent Emacs from asking for
-  ;; recipients when encrypting files
-  (epa-file-select-keys 1)
-  :config
-  ;; use the minibuffer instead of external program
-  (setq epg-pinentry-mode 'loopback)
-  ;; Prefer the encrypted authinfo-file
-  (setq auth-sources '((:source "~/.authinfo.gpg")
-                       (:source "~/.authinfo")))
-  ;; ensure this is enabled (is by default)
-  :hook (after-init . epa-file-enable))
-#+end_src
-
-| =files= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: is the use of `use-package' really necessary here?
-(use-package files
-  :defer t
-  :custom
-  (large-file-warning-threshold nil) ; Don't warn for large files
-  (backup-by-copying t)
-  (delete-old-versions t) ; Delete old versions without confirmation
-  (kept-new-versions 1)
-  (kept-old-versions 1)
-  (version-control t) ; use vc unconditionally to backup files
-  (backup-directory-alist
-   `((".*" . ,temporary-file-directory)))
-  (auto-save-file-name-transforms
-   `((".*" ,temporary-file-directory t)))
-  :config
-  (setq auto-save-list-file-prefix temporary-file-directory
-        ;; Move files to thrash instead of deleting them right away
-        delete-by-moving-to-trash t
-        ;; Prevent issues with build-watchers
-        create-lockfiles nil))
-#+end_src
-
-| =colorful-theme= | Custom |
-#+begin_src emacs-lisp :tangle yes
-(use-package colorful-theme
-  :load-path default-directory
-  :init
-  (setq custom-safe-themes t
-        ring-bell-function 'ignore)
-  :custom
-  (colorful-height-title-1 1.3)
-  (colorful-height-title-2 1.2)
-  (colorful-height-title-3 1.1)
-  :config
-  (defun my/load-theme ()
-    (when (display-graphic-p)
-        (load-theme 'colorful)))
+   '(html-mode nxml-mode web-mode)
+   '("<!--" "-->" "</>" "</" "/>" "://"))
+  (ligature-set-ligatures
+   'markdown-mode
+   '(("=" (rx (+ "=") (? (| ">" "<"))))
+     ("-" (rx (+ "-")))))
+  (ligature-set-ligatures
+   'prog-mode
+   '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+     ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+     "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+     "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+     "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+     "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+     "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+     "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+     ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+     "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+     "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+     "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+     "\\\\" "://"))
   :hook
-  (window-setup            . my/load-theme)
-  (server-after-make-frame . my/load-theme))
+  (window-setup . global-ligature-mode))
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
-;; Proudly stolen from https://github.com/rougier/elegant-emacs
-(defun my/mode-line-render (left right)
-  (let* ((available-width (- (window-width) (length left))))
-    (format (format "%%s %%%ds" available-width) left right)))
-
-(defconst MY/MODE-LINE-SEPARATOR (propertize " " 'face '(:inherit nil)))
-
-;; REVIEW: defer this? (use `window-setup-hook')
-;; TODO: split this into functions and move this into its own file
-(setq-default
- mode-line-format
- '((:eval
-    (my/mode-line-render
-     ;; Left hand side
-     (format-mode-line
-      (list
-       MY/MODE-LINE-SEPARATOR
-       '(:eval (cond
-                ((eq evil-state 'normal) (propertize " <N> " 'face '(:background "green")))
-                ((eq evil-state 'insert) (propertize " <I> " 'face '(:background "red")))
-                ((eq evil-state 'visual) (propertize " <V> " 'face '(:background "yellow")))
-                ((eq evil-state 'motion) (propertize " <M> " 'face '(:background "orange")))
-                (t "<*>")))
-       MY/MODE-LINE-SEPARATOR
-       ;; Highlight the file name if there are unsaved changes
-       (if (and buffer-file-name (buffer-modified-p))
-           (propertize "%b" 'face '(:foreground "red"))
-         "%b")
-       ))
-     ;; Right hand side
-     (format-mode-line
-      (list
-       '(vc-mode vc-mode)
-       MY/MODE-LINE-SEPARATOR
-       "%4l:%C"
-       MY/MODE-LINE-SEPARATOR
-       "%p%%"
-       MY/MODE-LINE-SEPARATOR
-       ))))))
-#+end_src
-
-| =evil=            | [[https://github.com/emacs-evil/evil][Github]] |
-| =evil-collection= | [[https://github.com/emacs-evil/evil-collection][Github]] |
-| =evil-surround=   | [[https://github.com/emacs-evil/evil-surround][Github]] |
-| =evil-snipe=      | [[https://github.com/hlissner/evil-snipe][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; Vim within Emacs.
-(use-package evil
-  :straight t
-  :init
-  (evil-mode +1) ; this has to be loaded before the rest of the package
-  :custom
-  (evil-want-keybinding nil)
-  (evil-want-integration t)
-  (evil-want-C-i-jump t) ; jump forward in the jump-list (default)
-  (evil-want-C-d-scroll t) ; (default)
-  (evil-want-C-w-delete t) ; (default)
-  (evil-move-beyond-eol t)
-  (evil-undo-system 'undo-redo) ; requires emacs 28+
-  (evil-want-fine-undo t) ; actions are undone in several steps
-  (evil-search-module 'evil-search) ; don't use isearch
-  (evil-ex-search-persistent-highlight nil)
-  (evil-vsplit-window-right t) ; split to the right not to the left
-  (evil-split-window-below t) ; split below not above
-  (evil-toggle-key "") ; You can't escape vim
-  :config
-  (setq-default evil-shift-width tab-width)
-  :bind
-  (:map evil-insert-state-map
-        ("C-y" . evil-paste-after) ;; same as in minibuffer
-        ("C-g" . evil-normal-state))
-  (:map evil-normal-state-map
-        ("C-g" . evil-force-normal-state)
-        ("go" . browse-url)))
-
-;; Useful vim keybindings for popular modes in Emacs.
-(use-package evil-collection
-  :straight t
-  :after evil
-  :config
-  (evil-collection-init))
-
-;; Tim Popes surround plugin for Emacs.
-(use-package evil-surround
-  :straight t
-  :after evil
-  :config
-  (global-evil-surround-mode +1))
-
-;; Vim-Snipe plugin for Emacs.
-(use-package evil-snipe
-  :straight t
-  :after evil
-  :custom
-  (evil-snipe-scope 'whole-visible)
-  (evil-snipe-repeat-scope 'whole-visible)
-  (evil-snipe-spillover-scope 'whole-buffer)
-  :config
-  ;; https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
-  (push 'magit-mode evil-snipe-disabled-modes)
-  (evil-snipe-mode +1)
-  (evil-snipe-override-mode +1))
-#+end_src
-
-| =general= | [[https://github.com/noctuid/general.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; Convenient way to manage keybindings
-(use-package general
-  :straight t
-  :after evil
-  :commands general-create-definer
-  :config
-  (general-evil-setup t))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(defconst MY/LEADER-KEY "SPC")
-(defconst MY/LEADER-FALLBACK-KEY "C-SPC")
-
-;; NOTE: This overrides SPC in every keymap except insert
-(general-create-definer my/leader-def
-  :states '(normal insert visual motion replace emacs)
-  :keymaps 'override
-  :prefix MY/LEADER-KEY ;; normal-state
-  :non-normal-prefix MY/LEADER-FALLBACK-KEY) ;; insert-state
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: use `global-set-key'?
-;; Shift selected text without losing the selection.
-;; The same "issue" exists in plain vim.
-(general-vmap ">"         'my/evil-shift-right)
-(general-vmap "<"         'my/evil-shift-left)
-(general-vmap "<tab>"     'my/evil-shift-right)
-(general-vmap "TAB"       'my/evil-shift-right)
-(general-vmap "<backtab>" 'my/evil-shift-left)
-(general-vmap "S-TAB"     'my/evil-shift-left)
-
-(defun my/evil-shift-right ()
-  "Shift the selected text to the right without losing the selection."
-  (interactive)
-  (evil-shift-right (region-beginning) (region-end))
-  (evil-normal-state)
-  (evil-visual-restore))
-
-(defun my/evil-shift-left ()
-  "Shift the selected text to the left without losing the selection."
-  (interactive)
-  (evil-shift-left (region-beginning) (region-end))
-  (evil-normal-state)
-  (evil-visual-restore))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; Simulate Tim Popes vim-commentary for Evil
-(evil-define-operator my/evil-comment-region (start end)
-  "Comment or uncomment the given region."
-  (comment-or-uncomment-region start end))
-
-(general-nmap
-  "gc" (general-key-dispatch 'my/evil-comment-region
-         "c" 'comment-line))
-(general-vmap
-  "gc" 'my/evil-comment-region)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; This key key-chord will escape the insert state by pressing "j" twice
-;; within a very short period of time.
-(general-imap "j"
-              (general-key-dispatch 'self-insert-command
-                ;; Only works with second key is pressed within this time-span
-                ;; Otherwise just insert the character.
-                :timeout 0.20
-                "j" 'evil-normal-state))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: remove `use-packge' here? If not any way to defer this?
-(use-package newcomment
-  :custom
-  (comment-empty-lines t) ; don't comment empty lines
-  (comment-fill-column nil)
-  (comment-multi-line t)
-  ;; continue comment when breaking the previous line
-  (comment-auto-fill-only-comments t)
-  (comment-style 'multi-line))
-#+end_src
-
+** Mouse
 Hide the mouse cursor in the bottom left corner of the screen.
-| =avoid=         | [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Mouse-Avoidance.html][Built-in]] |
-| =disable-mouse= | [[https://github.com/purcell/disable-mouse][Github]]   |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (mouse-avoidance-mode 'banish)
 (setq mouse-avoidance-banish-position
       '((frame-or-window . frame)
@@ -428,46 +273,110 @@ Hide the mouse cursor in the bottom left corner of the screen.
         (side-pos . 0)
         (top-or-bottom . bottom)
         (top-or-bottom-pos . 0)))
-
-(use-package disable-mouse
-  :straight t
-  :config
-  (mapc #'disable-mouse-in-keymap
-        (list evil-motion-state-map
-              evil-normal-state-map
-              evil-visual-state-map
-              evil-insert-state-map))
-  :hook (window-setup . global-disable-mouse-mode))
 #+end_src
 
-| =hydra= | [[https://github.com/abo-abo/hydra][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package hydra
-  :straight t
-  :commands defhydra)
-
-;; REVIEW: map all hydras here?
+#+begin_src emacs-lisp :results silent
+;; scroll one line with the mouse wheel
+;; when pressing shift scroll tree lines at a time
+;; and when pressing control scale the text
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 3) ((control) . text-scale))) ;; one line at a time
+(setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
+(setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
+(setq scroll-step 1) ;; keyboard scroll one line at a time
 #+end_src
 
-| =which-key= | [[https://github.com/justbur/emacs-which-key][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; Displays key bindings following the currently entered incomplete command in a popup.
-(use-package which-key
+#+begin_src emacs-lisp :results silent
+;; text-scale-adjust looks at the last key typed to determine
+;; which action to take.
+(global-set-key (kbd "C-+") 'text-scale-adjust) ; increase
+(global-set-key (kbd "C-=") 'text-scale-adjust) ; increase
+(global-set-key (kbd "C--") 'text-scale-adjust) ; decrease
+(global-set-key (kbd "C-0") 'text-scale-adjust) ; restore
+#+end_src
+
+** Themes
+#+begin_src emacs-lisp :results silent
+;; No bell
+(setq visible-bell nil
+      ring-bell-function 'ignore)
+
+(customize-set-variable 'custom-safe-themes t) ; All Themes are safe to load
+
+;; (setq-default header-line-format mode-line-format
+;;       mode-line-format nil)
+
+;; NOTE: Built into Emacs 28
+;; SEE: https://protesilaos.com/modus-themes/
+(use-package modus-themes
   :straight t
   :custom
-  (which-key-idle-delay 0.75)
-  (which-key-idle-secondary-delay 0.00)
-  (which-key-show-remaining-keys nil)
-  :hook (window-setup . which-key-mode))
+  (modus-themes-slanted-constructs t)
+  (modus-themes-bold-constructs t)
+  ;; modus-themes-no-mixed-fonts nil
+  (modus-themes-subtle-line-numbers t)
+  (modus-themes-fringes nil)
+  (modus-themes-lang-checkers nil)
+  (modus-themes-mode-line 'borderless)
+  (modus-themes-syntax 'alt-syntax)
+  (modus-themes-hl-line nil)
+  (modus-themes-paren-match 'intense-bold)
+  (modus-themes-links 'faint-neutral-underline)
+  (modus-themes-prompts 'subtle-accented)
+  (modus-themes-completions 'moderate)
+  (modus-themes-region 'bg-only-no-extend)
+  (modus-themes-diffs nil)
+  (modus-themes-org-blocks 'grayscale)
+  (modus-themes-org-habit 'simplified)
+  (modus-themes-headings '((t . rainbow)))
+  (modus-themes-variable-pitch-ui t)
+  (modus-themes-variable-pitch-headings t)
+  (modus-themes-scale-headings t)
+  (modus-themes-scale-1 1.1)
+  (modus-themes-scale-2 1.15)
+  (modus-themes-scale-3 1.21)
+  (modus-themes-scale-4 1.27)
+  (modus-themes-scale-5 1.33)
+  :config
+  (modus-themes-load-vivendi) ; OR: (modus-themes-load-operandi)
+  :bind ("<f5>" . modus-themes-toggle)
+  :hook (window-setup . modus-themes-load-themes))
+#+end_src
+
+** Highlighting
+#+begin_src emacs-lisp :results silent
+;; Activating `global-prettify-symbols-mode' would override ligature.el,
+;; because in `prettify-symbols-alist' are some pre-defined symbols like => and >=
+;; NOTE: no need to make this buffer local. `prettify-symbols-mode' is
+;; alread buffer local
+
+;; REVIEW: use `org-emphasis-alist' instead?
+(font-lock-add-keywords 'org-mode
+                        '(("@[a-zA-Z]+.+?[^;,.]+" . font-lock-keyword-face)))
+
+(add-hook 'org-mode-hook
+          #'(lambda ()
+              "Beautify checkbox symbol."
+              (push '("[ ]" . ?○) prettify-symbols-alist)
+              (push '("[-]" . ?⦿) prettify-symbols-alist)
+              (push '("[X]" . ?◉) prettify-symbols-alist)
+              (prettify-symbols-mode +1)))
+
+(add-hook 'emacs-lisp-mode-hook
+          #'(lambda ()
+              "Beautify lambda symbol."
+              (push '("lambda" . ?λ) prettify-symbols-alist)
+              (prettify-symbols-mode +1)))
 #+end_src
 
 | =display-line-numbers= | Built-in |
 | =hl-line=              | Built-in |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package display-line-numbers
   :custom
+  (display-line-numbers-width 4)
+  (display-line-numbers-grow-only t)
   (display-line-numbers-type 'relative)
-  :hook ((text-mode prog-mode) . display-line-numbers-mode))
+  :hook ((text-mode conf-mode prog-mode) . display-line-numbers-mode))
 
 ;; Highlight the current line.
 (use-package hl-line
@@ -477,9 +386,22 @@ Hide the mouse cursor in the bottom left corner of the screen.
   :hook ((text-mode prog-mode) . hl-line-mode))
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
+| =display-fill-column-indicator= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; Display the fill-column in the buffer.
+(use-package display-fill-column-indicator
+  :custom
+  (display-fill-column-indicator-column t) ; use `fill-column'
+  (display-fill-column-indicator-character ?·)
+  :custom-face
+  (fill-column-indicator ((t (:inherit font-lock-comment-face))))
+  :hook
+  (prog-mode . display-fill-column-indicator-mode))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
 ;; SEE: https://www.gnu.org/software/emacs/manual/html_node/emacs/Font-Lock.html
-;; FIXME: `font-lock-constant-face' is already bold
+;; NOTE: `font-lock-constant-face' is already bold
 (defun my/hl-todo ()
   "Highlight TODO and similar keywords."
   (font-lock-add-keywords
@@ -500,28 +422,393 @@ Hide the mouse cursor in the bottom left corner of the screen.
          ("\\(\\<\\(DEPRECATED\\)\\>[:]*\\)" 1
           '((nil :inherit font-lock-doc-face :weight bold)) t))))
 
-;; This is buffer local
+;; NOTE: This is already buffer local
 (add-hook 'prog-mode-hook #'my/hl-todo)
 #+end_src
 
+| =whitespace= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; Highlight some non printable characters like tabs and trailing spaces
+(use-package whitespace
+  :custom
+  (whitespace-line-column nil) ;; use the value of `fill-column'
+  ;; https://github.com/hlissner/doom-emacs/issues/109
+  (whitespace-display-mappings
+   '((tab-mark ?\t [?» ?\t])))
+     ;; (newline-mark 10 [?¬ 10])
+     ;; (space-mark 32 [?·] [46])))
+  (whitespace-style
+   '(face
+     ;; spaces space-mark
+     ;; space-before-tab space-after-tab
+     tabs tab-mark
+     ;; newline newline-mark
+     trailing lines-tail))
+  :config
+  (defun my/whitespace-cleanup ()
+    "Delete trailing whitespaces before saving."
+    ;; This is buffer-local by default
+    ;; -100: run first / 100: rust last
+    (add-hook 'before-save-hook #'whitespace-cleanup -90 t))
+  :hook
+  (prog-mode . whitespace-mode)
+  ((text-mode conf-mode prog-mode). my/whitespace-cleanup))
+#+end_src
+
+* Keybindings
+** Evil
+| =evil=            | [[https://github.com/emacs-evil/evil][Github]] |
+| =evil-collection= | [[https://github.com/emacs-evil/evil-collection][Github]] |
+| =evil-surround=   | [[https://github.com/emacs-evil/evil-surround][Github]] |
+| =evil-snipe=      | [[https://github.com/hlissner/evil-snipe][Github]] |
+#+begin_src emacs-lisp :results silent
+;; Vim within Emacs.
+(use-package evil
+  :straight t
+  :commands evil-define-operator
+  :init
+  (custom-set-variables
+   '(evil-want-keybinding nil)
+   '(evil-want-integration t))
+  :custom
+  (evil-want-C-i-jump t) ; jump forward in the jump-list (default)
+  (evil-want-C-d-scroll t) ; (default)
+  (evil-want-C-w-delete t) ; (default)
+  (evil-move-beyond-eol t)
+  (evil-undo-system 'undo-redo) ; requires emacs 28+
+  (evil-want-fine-undo nil) ; (default)
+  (evil-search-module 'isearch)
+  (evil-vsplit-window-right t) ; split to the right not to the left
+  (evil-split-window-below t) ; split below not above
+  (evil-toggle-key "C-z")
+  (evil-shift-width tab-width)
+  :bind
+  (:map evil-insert-state-map
+        ("C-y" . evil-paste-after) ; same as in minibuffer
+        ("C-g" . evil-normal-state))
+  (:map evil-normal-state-map
+        ("C-g" . evil-force-normal-state)
+        ("go"  . browse-url))
+  :hook (after-init . evil-mode))
+
+;; Useful vim keybindings for popular modes in Emacs.
+;; REVIEW: `evil-collection-mode-list'
+(use-package evil-collection
+  :straight t
+  :config
+  (evil-collection-init))
+
+;; Tim Popes surround plugin for Emacs.
+;; REVIEW: any settings?
+(use-package evil-surround
+  :straight t
+  :hook (prog-mode . evil-surround-mode))
+
+;; Vim-Snipe plugin for Emacs.
+(use-package evil-snipe
+  :straight t
+  :after evil
+  :custom
+  (evil-snipe-scope 'whole-visible)
+  (evil-snipe-repeat-scope 'whole-visible)
+  (evil-snipe-spillover-scope 'whole-buffer)
+  :config
+  ;; https://github.com/emacs-evil/evil-collection/tree/master/modes/magit#known-conflicts
+  (push 'magit-mode evil-snipe-disabled-modes)
+  (evil-snipe-mode +1)
+  (evil-snipe-override-mode +1))
+#+end_src
+
+** Minibuffer
+| =which-key= | [[https://github.com/justbur/emacs-which-key][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package which-key
+  :straight t
+  :custom
+  (which-key-idle-delay 0.75)
+  (which-key-idle-secondary-delay 0.00)
+  (which-key-show-remaining-keys nil)
+  :config
+  (setq which-key-replacement-alist
+        (append '((("TAB" . nil) . ("↹" . nil))
+                  (("RET" . nil) . ("⏎" . nil))
+                  (("DEL" . nil) . ("⇤" . nil))
+                  (("SPC" . nil) . ("␣" . nil)))
+                which-key-replacement-alist))
+  :hook (window-setup . which-key-mode))
+#+end_src
+
+** Leader
+| =general= | [[https://github.com/noctuid/general.el][Github]] |
+#+begin_src emacs-lisp :results silent
+;; Convenient way to manage keybindings
+(use-package general
+  :straight t
+  :commands general-create-definer
+  :config
+  (general-evil-setup t))
+
+(defconst MY/LEADER-KEY "SPC")
+(defconst MY/LEADER-FALLBACK-KEY "C-SPC")
+
+(general-create-definer my/leader-def
+  :states '(normal insert visual motion replace emacs)
+  :keymaps 'override
+  :prefix MY/LEADER-KEY ; `normal-state'
+  :non-normal-prefix MY/LEADER-FALLBACK-KEY) ; `insert-state'
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(my/leader-def
+  "SPC" '(execute-extended-command :which-key "M-x")
+  "h"   '(:keymap help-map :which-key "Help")
+  "a"   '(org-agenda :which-key "Agenda")
+  "r"   '(my/config-rebuild :which-key "Rebuild Emacs")
+  "w"   '(my/hydra-window/body :which-key "Windows")
+  "l"   '(:ignore t :which-key "Launch")
+  "lm"  '(mu4e :which-key "Mail")
+  "lf"  '(elfeed :which-key "Feeds")
+  "lw"  '(elpher :which-key "Web")
+  "lt"  '(vterm :which-key "Terminal")
+  "le"  '(eshell :which-key "Eshell")
+  "f"   '(my/hydra-buffers/body :which-key "Files")
+  "b"   '(:keymap bookmark-map :which-key "Bookmarks")
+  "q"   '(:ignore t :which-key "Quit")
+  "qq"  '(save-buffers-kill-terminal :which-key "Emacs")
+  "qb"  '(kill-buffer :which-key "Buffer")
+  "qw"  '(kill-buffer-and-window :which-key "Window"))
+#+end_src
+
+** Hydra
+| =hydra= | [[https://github.com/abo-abo/hydra][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package hydra
+  :straight t
+  :commands defhydra)
+
+;; REVIEW: map all hydras here?
+#+end_src
+
+** Other
+#+begin_src emacs-lisp :results silent
+;; Simulate Tim Popes vim-commentary for Evil
+(evil-define-operator my/evil-comment-region (beg end)
+  "Comment or uncomment the given region."
+  (comment-or-uncomment-region beg end))
+
+(general-nmap
+  "gc" (general-key-dispatch 'my/evil-comment-region
+         "c" 'comment-line))
+(general-vmap
+  "gc" 'my/evil-comment-region)
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; This key key-chord will escape the insert state by pressing "j" twice
+;; within a very short period of time.
+(general-imap "j"
+              (general-key-dispatch 'self-insert-command
+                ;; Only works with second key is pressed within this time-span
+                ;; Otherwise just insert the character.
+                :timeout 0.50
+                "j" 'evil-normal-state))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; Shift selected text without losing the selection.
+(general-vmap
+  ">"         'my/evil-shift-right
+  "<"         'my/evil-shift-left
+  "<tab>"     'my/evil-shift-right
+  "TAB"       'my/evil-shift-right
+  "<backtab>" 'my/evil-shift-left
+  "S-TAB"     'my/evil-shift-left)
+
+(defun my/evil-shift-right ()
+  "Shift the selected text to the right without losing the selection."
+  (interactive)
+  (evil-shift-right (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+
+(defun my/evil-shift-left ()
+  "Shift the selected text to the left without losing the selection."
+  (interactive)
+  (evil-shift-left (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; REVIEW: use this or `fset'?
+(defalias 'yes-or-no-p 'y-or-n-p)
+(defalias 'el-up       'elfeed-update)
+(defalias 'term        'vterm)
+
+(evil-ex-define-cmd "eb"     'eval-buffer)
+(evil-ex-define-cmd "er"     'eval-region)
+(evil-ex-define-cmd "kb"     'kill-buffer)
+(evil-ex-define-cmd "kab"    'my/kill-all-buffers)
+(evil-ex-define-cmd "cp"     'check-parens)
+(evil-ex-define-cmd "mu[4e]" 'mu4e)
+(evil-ex-define-cmd "lt"     'load-theme)
+#+end_src
+
+* Windows
+** Placement
+Prefer vertical splitting when the frame is fullscreen.
+#+begin_src emacs-lisp :results silent
+;; prefer vertical splitting when the frame is fullscreen.
+(setq split-height-threshold 50
+      split-width-threshold 125) ; Default is 95 and maximum is 148
+
+(setq display-buffer-base-action
+  '((display-buffer-reuse-window ;; This function tries to display buffer by finding a window that is already displaying it
+     display-buffer-reuse-mode-window
+     display-buffer-in-previous-window ;;  tries to display buffer in a window where it was displayed previously.
+     display-buffer-pop-up-window ;; split the window. This respects split-height/width-threshold
+     display-buffer-same-window ;; this (current) window
+     )
+    . ((inhibit-same-window . nil) ;; Allow using the same window.
+       (resuable-frames . nil) ;; Do not use other frames
+       (inhibit-switch-frame t) ;; prevents an another frame from being raised or selected
+       (preserve-size (t . t)) ;; preserve the width and height of the chosen buffer (must already exist)
+       (mode . (help-mode
+                eldoc-mode
+                compilation-mode
+                image-mode
+                doc-view-mode
+                magit-mode)))))
+#+end_src
+
+| =ace-window= | [[https://github.com/abo-abo/ace-window][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package ace-window
+  :straight t
+  :commands ace-window
+  :custom
+  (aw-ignore-current t) ; Don't offer to select the current window
+  (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)) ; use the home row rather than numbers
+  (aw-background nil)) ; Don't dim the background of the windows
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+;; REVIEW: use other color?
+;; TODO: add | and - for switching horizontal and vertical
+(defhydra my/hydra-window (:color amaranth)
+  "Window management"
+  ("h" windmove-left "Left" :column "Navigate")
+  ("j" windmove-down "Down")
+  ("k" windmove-up "Up")
+  ("l" windmove-right "Right")
+  ("s" ace-window "Select")
+  ("v" split-window-vertically "Vertical" :column "Split")
+  ("x" split-window-horizontally "Horizontal")
+  ("H" windmove-swap-states-left "Left" :column "Swap")
+  ("J" windmove-swap-states-down "Down")
+  ("K" windmove-swap-states-up "Up")
+  ("L" windmove-swap-states-right "Right")
+  ("<" shrink-window-horizontally "Shrink width" :column "Resize")
+  (">" enlarge-window-horizontally "Grow width")
+  ("," shrink-window "Shrink height")
+  ("." enlarge-window "Grow height")
+  ("=" balance-windows "Balance")
+  ("0" delete-window "Window" :column "Delete")
+  ("o" delete-other-windows "Other" :exit t)
+  ("u" winner-undo "Undo")
+  ("r" winner-redo "Redo")
+  ("q" nil "Quit" :column "Exit" :exit t))
+#+end_src
+
+** Buffers
+#+begin_src emacs-lisp :results silent
+(defun my/kill-other-buffers ()
+  "Kill all other buffers."
+  (interactive)
+  (mapc 'kill-buffer (delq (current-buffer) (buffer-list))))
+
+;; TODO: add binding in `normal-state-map'
+(defun my/revert-buffer-no-confirm ()
+  "Revert buffer without confirmation."
+  (interactive)
+  (revert-buffer :ignore-auto :noconfirm))
+
+(evil-define-key 'normal 'global "gR" 'my/revert-buffer-no-confirm)
+
+(defun my/delete-this-file ()
+  "Delete the file associated with the current buffer."
+  (interactive)
+  (when (y-or-n-p "Delete this file? ")
+    (delete-file (buffer-file-name))
+    ;; clear the modified flag before calling kill-buffer
+    (set-buffer-modified-p nil)
+    (kill-buffer)))
+
+(defun my/rename-this-file (newname)
+  "Renames both current buffer and file it's visiting to NEWNAME."
+  (interactive "sNew filename: ")
+  (if-let ((name (buffer-file-name)))
+      (progn
+        (rename-file name newname)
+        (rename-buffer newname)
+        (set-visited-file-name newname)
+        (set-buffer-modified-p nil))
+    (message "Buffer '%s' is not visiting a file!" (buffer-name))))
+
+;; REVIEW: use this as initial-buffer and for new tabs?
+(defun my/new-empty-buffer (&optional name mode)
+  "Create a new empty buffer."
+  (interactive)
+  (let* ((name (or name "*untitled*"))
+         (mode (or mode initial-major-mode))
+         (buffer (generate-new-buffer name)))
+    (switch-to-buffer buffer)
+    (funcall mode)
+    ;; automaaticly buffer-local
+    (setq buffer-offer-save nil) ; don't prompt to save this buffer
+    ;; return the buffer
+    buffer))
+
+(defhydra my/hydra-buffers (:color amaranth)
+  "Buffer management"
+  ("j" switch-to-next-buffer "Next" :column "Navigate")
+  ("k" switch-to-prev-buffer "Previous")
+  ("f" find-file "File" :exit t)
+  ("g" grep-find "Grep" :exit t)
+  ("O" occur "Occur" :exit t)
+  ("b" switch-to-buffer "Buffers" :exit t)
+  ("r" rename-buffer "Rename" :column "Action")
+  ("n" my/new-empty-buffer "New")
+  ("R" my/revert-buffer-no-confirm "Revert")
+  ("s" save-buffer "Save" :exit t)
+  ("0" kill-this-buffer "This" :column "Delete")
+  ("c" clean-buffer-list "Clean")
+  ("d" my/delete-this-file "File")
+  ("o" my/kill-other-buffers "Other")
+  ("q" nil "Quit" :column "Exit" :exit t))
+#+end_src
+
+** Tabs
 | =tab-bar= | Built-in |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 ;; NOTE: no need to enable tab-bar-mode. If there is more than one tab
 ;; open at the same time the mode will be enable automatically.
-;; TODO: review now settings that came with Emacs 28
 (use-package tab-bar
+  ;; NOTE: 28.1 will be the final release. This is a development build
+  ;; tab-bar was introduced in 27.1 but some features are not released yet
+  :if (version<= "28.0" emacs-version)
   :commands tab-bar-mode
   :custom
   (tab-bar-show 1) ; hide the tab bar when it has only one tab
-  (tab-bar-close-button-show nil) ;; Don't show buttons
+  ;; (tab-bar-tab-name-format-function #'my/tab-bar-tab-name-format)
+  (tab-bar-close-button-show nil) ; Don't show buttons
   (tab-bar-new-button-show nil)
+  (tab-bar-tab-hints t) ; Show number
   (tab-bar-history-buttons-show nil)
-  (tab-bar-new-tab-choice "*scratch*") ;; New tabs will show the scratch-buffer
-  (tab-bar-new-tab-to 'rightmost)  ;; Always add new tabs to the rightmost position
-  ;; (tab-bar-close-last-tab-choice delete-frame)
+  (tab-bar-new-tab-choice "*scratch*") ; New tabs will show the scratch-buffer
+  (tab-bar-new-tab-to 'rightmost) ; Always add new tabs to the rightmost position
   :config
   ;; NOTE: gt and gT are alreay mapped by evil-collection in normal state
-  ;; TODO: select tabs with number (`tab-bar-select-tab' X)
   (defhydra my/hydra-tab-bar (:color amaranth)
     "Tab Bar Operations"
     ("t"   tab-new "Create a new tab" :column "Action")
@@ -529,47 +816,481 @@ Hide the mouse cursor in the bottom left corner of the screen.
     ("o"   tab-close-other "Other" :exit t)
     ("u"   tab-bar-history-back "Undo")
     ("r"   tab-bar-history-forward "Redo")
-    ("m"   tab-move "Move current tab" :column "Modification")
+    ("m"   tab-move "Move tab forwards" :column "Modification")
+    ("M"   (tab-move -1) "Move tab backwards" :column "Modification")
     ("r"   tab-rename "Rename Tab")
-    ("RET" tab-bar-switch-to-tab "Select tab by name" :column "Navigation")
+    ("RET" tab-bar-switch-to-tab "Select tab by name" :column "Navigation" :exit t)
     ("l"   tab-next "Next Tab")
     ("h"   tab-previous "Previous Tab")
     ("q"   nil "Quit" :exit t))
   :general
-  (my/leader-def "t" '(my/hydra-tab-bar/body :which-key "Tabs"))
+  (my/leader-def
+    "t" '(my/hydra-tab-bar/body :which-key "Tabs"))
   ;; remember window configurations used in every tab (undo / redo)
   :hook (tab-bar-mode . tab-bar-history-mode))
 #+end_src
 
-| =help=  | Built-in |
-| =eldoc= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; TODO: setup eldoc
-(use-package eldoc
-  :commands eldoc-mode
-  :init
-  (global-eldoc-mode -1)
-  :custom
-  (eldoc-idle-delay 0.75)
-  (eldoc-echo-area-display-truncation-message nil)
-  (eldoc-echo-area-use-multiline-p 0.25) ; use 25% of the frame
-  (eldoc-documentation-strategy 'eldoc-documentation-compose-eagerly)
-  (eldoc-echo-area-prefer-doc-buffer 'maybe))
+#+begin_src emacs-lisp :results silent
+(add-hook 'after-init #'global-auto-revert-mode)
 
-;; navigate back and forwards with </>-keys
-(use-package help
-  :defer t
-  :custom
-  (help-window-select t) ;; Always focus the help buffer
-  :general
-  (my/leader-def
-  "h"  '(:keymap help-map :which-key "Help")))
+(use-package winner
+  :after evil
+  :bind
+  (:map evil-window-map
+        ("u" . winner-undo)
+        ("U" . winner-redo))
+  :hook (window-setup . winner-mode))
 #+end_src
 
+** Server
+Start the server if it's not already running or using Emacs from a terminal
+| =server= | Built-in |
+#+begin_src emacs-lisp :results silent
+(require 'server)
+(unless (server-running-p)
+  (custom-set-variables
+   '(server-kill-new-buffers t)
+   '(server-raise-frame nil)) ; (default)
+  (add-hook 'after-init-hook #'server-start))
+#+end_src
+
+** Desktop
+| =desktop=  | Built-in |
+| =savehist= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; FIXME: do something about unused lock-files
+(use-package desktop
+  :custom
+  (desktop-save t) ; just save without asking
+  (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
+  (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
+  (desktop-restore-eager 1) ; only restore one buffer immediately
+  (desktop-restore-frames nil) ; don't resotre the frame and buffer configuration
+  (desktop-load-locked-desktop nil) ;; Never load locked desktop files
+  :config
+  (setq desktop-modes-not-to-save ; List of major modes whose buffers should not be saved
+        (append '(fundamental-mode
+                  special-mode ;; e.g. elfeed-log
+                  help-mode
+                  dired-mode
+                  image-mode
+                  elfeed-show-mode)
+                desktop-modes-not-to-save))
+  ;; REVIEW: `desktop-globals-to-save' `desktop-globals-to-clear'
+  :hook
+  (after-init . desktop-read)
+  ;; only load if there was no file or a file successfully loaded
+  ((desktop-after-read desktop-no-desktop-file) . desktop-save-mode))
+
+(defun my/desktop-delete ()
+  "Delete the current desktop file and don't save the current session."
+  (interactive)
+  (desktop-remove)
+  (desktop-save-mode -1))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(use-package savehist
+  :custom
+  (history-length 200)
+  (history-delete-duplicates t)
+  (savehist-file (locate-user-emacs-file "savehist"))
+  (savehist-save-minibuffer-history t) ; default
+  :hook (after-init . savehist-mode))
+#+end_src
+
+* Completion
+** Minibuffer
+#+begin_src emacs-lisp :results silent
+(let ((map minibuffer-local-map))
+  (define-key map (kbd "C-w") 'backward-kill-word))
+
+(custom-set-variables
+ '(max-mini-window-height 0.5) ; 50% of the frame
+ '(resize-mini-windows 'grow-only) ; default
+ ;; Dont show this distracting completions buffer
+ '(completion-auto-help nil)
+ '(completion-ignore-case t)
+ '(read-file-name-completion-ignore-case t)
+ '(read-buffer-completion-ignore-case t)
+ ;; REVIEW: what does this do
+ ;; '(completion-cycle-threshold 3)
+ ;; Use multiple minibuffers at once
+ ;;'(enable-recursive-minibuffers t)
+)
+#+end_src
+
+** Icomplete
+| =icomplete= | Built-in |
+#+begin_src emacs-lisp :results silent
+(use-package icomplete
+  :disabled t
+  :custom
+  (icomplete-max-delay-chars 0)
+  (icomplete-compute-delay 0.0)
+  (icomplete-show-matches-on-no-input t) ; always for matches
+  (icomplete-hide-common-prefix nil)
+  (icomplete-prospects-height 1)
+  ;; (completion-styles '(basic substring partial-completion flex))
+  ;; Ignore case
+  :bind
+  (:map icomplete-minibuffer-map
+        ("<tab>"     . icomplete-forward-completions)
+        ("TAB"       . icomplete-forward-completions)
+        ("<backtab>" . icomplete-backward-completions)
+        ("S-TAB"     . icomplete-backward-completions))
+  :hook
+  ;; NOTE: need to enable `fido-mode' instead of `icomplete-mode'
+  (after-init     . fido-mode)
+  (icomplete-mode . icomplete-vertical-mode))
+#+end_src
+
+** Vertico
+| =vertico=    | [[https://github.com/minad/vertico][Github]] |
+| =orderless=  | [[https://github.com/oantolin/orderless][Github]] |
+| =consult=    | [[https://github.com/minad/consult][Github]] |
+| =marginalia= | [[https://github.com/minad/marginalia/][Github]] |
+| =affe=       | [[https://github.com/minad/affe][Github]] |
+#+begin_src emacs-lisp :results silent
+;; Vertico automaticly uses history entries as top entries in the completion.
+;; Because of this I use Vertico over icomplete / fido at the moment.
+(use-package vertico
+  :straight t
+  :custom
+  (vertico-count 12) ; default 10
+  (vertico-cycle t)
+  :bind
+  (:map vertico-map
+        ("RET"       . vertico-exit)
+        ("<return>"  . vertico-exit)
+        ("C-j"       . vertico-insert)
+        ("<tab>"     . vertico-next)
+        ("TAB"       . vertico-next)
+        ("<backtab>" . vertico-previous)
+        ("S-TAB"     . vertico-previous))
+  :hook (after-init . vertico-mode))
+
+(use-package orderless
+  :straight t
+  ;; :after icomplete
+  :after vertico
+  :custom
+  (completion-styles '(substring orderless))
+  (completion-category-defaults nil) ; use the same settings for everything
+  (completion-category-overrides '((file (styles basic substring flex)))))
+
+(use-package marginalia
+  :straight t
+  :after vertico
+  :config
+  (marginalia-mode +1)
+  :bind
+  (:map minibuffer-local-map
+        ("M-A" . marginalia-cycle)))
+
+;; An alternative to swiper
+(use-package consult
+  :straight t
+  :after vertico)
+#+end_src
+
+** Company
+| =company= | [[https://github.com/company-mode/company-mode][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package company
+  :straight t
+  :custom
+  (company-backends
+   '((company-capf :with company-yasnippet)
+     (company-dabbrev-code
+      company-keywords
+      company-files
+      company-dabbrev)))
+  (company-dabbrev-downcase nil)
+  (company-dabbrev-ignore-case nil)
+  (company-selection-wrap-around t)
+  (company-minimum-prefix-length 1)
+  (company-idle-delay 0.0)
+  (company-tooltip-width-grow-only t)
+  (company-tooltip-align-annotations t)
+  (company-format-margin-function nil) ; icons look blurry on my disply
+  ;; dont remove slash when completing path
+  (company-files-chop-trailing-slash nil)
+  :config
+  (company-tng-configure-default)
+  :hook
+  (prog-mode . company-mode))
+#+end_src
+
+* Files
+| =files= | Built-in |
+#+begin_src emacs-lisp :results silent
+(custom-set-variables
+ '(large-file-warning-threshold nil) ; Don't warn for large files
+ '(backup-by-copying t)
+ '(delete-old-versions t) ; Delete old versions without confirmation
+ '(kept-new-versions 5)
+ '(kept-old-versions 2)
+ '(version-control t) ; use vc unconditionally to backup files
+ '(backup-directory-alist
+   `((".*" . ,temporary-file-directory)))
+ '(auto-save-file-name-transforms
+   `((".*" ,temporary-file-directory t)))
+ '(auto-save-list-file-prefix temporary-file-directory)
+ ;; Move files to thrash instead of deleting them right away
+ '(delete-by-moving-to-trash t)
+ ;; Prevent issues with build-watchers
+ '(create-lockfiles nil))
+
+;; REVIEW: move out of here?
+(customize-set-variable 'require-final-newline t) ; add a final new line when saving
+#+end_src
+
+** Dired
+| =dired= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; TODO: binding for  `wdired-change-to-wdired-mode'
+;; Emacs build-in file manager
+;; TODO: bind emms-play-dired
+(use-package dired
+  :commands (dired dired-jump)
+  :custom
+  (dired-auto-revert-buffer t)
+  (dired-dwim-target t)
+  (dired-listing-switches "-Ahlv --group-directories-first") ; arguments passed to ls
+  (dired-recursive-copies 'always)
+  ;; Omit dotfiles (which are included by `dired-listing-switches')
+  (dired-omit-files "^\\..*")
+  :config
+  ;; use dired-find-alternate-file instead of `dired-find-file'
+  ;; to prevent dired to create so many buffers.
+  (put 'dired-find-alternate-file 'disabled nil)
+  :bind
+  ([remap dired-find-file] . #'dired-find-alternate-file)
+  :general
+  (:states 'normal
+           :keymaps 'dired-mode-map
+           "h" 'dired-up-directory
+           "l" 'dired-find-file
+           "M-RET" 'my/dired-browse-file
+           ;; default `dired-do-touch' (change timestamp)
+           "T" 'dired-create-empty-file)
+  (my/leader-def
+    "d"  '(:ignore t :which-key "Dired")
+    "dd" 'dired
+    "dw" 'dired-other-window
+    "dt" 'dired-other-tab
+    "dj" 'dired-jump))
+
+;; TODO: open files with tramp and samba
+(defun my/dired-browse-file ()
+  "Open the selected file with the default application for this filetype."
+  (interactive)
+  (let ((file (dired-get-filename nil t)))
+    (call-process "xdg-open" nil 0 nil file)))
+#+end_src
+
+** Proced
+#+begin_src emacs-lisp :results silent
+;; auto-update can be changed with a option or a function
+(use-package proced
+  :commands proced
+  :custom
+  (proced-auto-update-interval 1.0)
+  (proced-tree-flag t)
+  :hook (proced-mode . proced-toggle-auto-update))
+#+end_src
+
+** Images
+#+begin_src emacs-lisp :results silent
+(use-package image-mode
+  :commands image-mode
+  :custom
+  (image-auto-resize 'fit-width) ; I prefer a vertical fit
+  (image-auto-resize-on-window-resize 0.0) ; resize immediately
+  (auto-image-file-mode t)
+  :config
+  (setq max-image-size t) ; do not limit the size of image to open
+  :general
+  (:states 'normal
+           :keymaps 'image-mode-map
+           "-" 'image-decrease-size
+           "+" 'image-increase-size
+           "=" 'image-increase-size)
+  :hook (image-mode . auto-revert-mode))
+#+end_src
+
+** PDF
+#+begin_src emacs-lisp :results silent
+(use-package doc-view
+  :commands doc-view-mode
+  :custom
+  (doc-view-resolution 300) ; 300 is enough
+  (doc-view-continuous t)) ; reaching the page edge advances to next/previous page
+#+end_src
+
+** Encryption
+#+begin_src emacs-lisp :results silent
+(with-eval-after-load 'gnutls
+  (eval-when-compile
+    (require 'gnutls))
+  ;; Path to self signed certificates.
+  (add-to-list 'gnutls-trustfiles "~/ssl/certs/*.pem")
+  ;; Do not cause an error when the hostname doesn't match
+  ;; the certificate’s host name.
+  (custom-set-variables
+   '(gnutls-verify-error :trustfiles)
+   '(gnutls-min-prime-bits 4096)))
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(setq undo-limit (* 50 1024 1024)) ;; 50mb undo limit
+#+end_src
+
+| =password-store= | [[https://git.zx2c4.com/password-store/tree/contrib/emacs][ZX2C4]] |
+#+begin_src emacs-lisp :results silent
+(use-package password-store
+  :defer 1
+  :straight t
+  :custom
+  (password-store-password-length 16)
+  (password-store-time-before-clipboard-restore 30))
+#+end_src
+
+| =epa-file= | Built-in |
+#+begin_src emacs-lisp :results silent
+(with-eval-after-load 'epa-file
+  ;; cache passphrase for symmetric encryption.
+  (setq epa-file-cache-passphrase-for-symmetric-encryption t
+        ;; Any value other than t or nil will prevent Emacs from asking for
+        ;; recipients when encrypting files
+        epa-file-select-keys 1))
+
+;; use the minibuffer instead of external program
+(setq epg-pinentry-mode 'loopback) ;; REVIEW: prefer gnome-keyring?
+;; Cached passwords don't expire
+(setq auth-source-cache-expiry nil
+      ;; Online use an encrypted authinfo-file
+      auth-sources '((:source "~/.authinfo.gpg")))
+#+end_src
+
+** Tramp
+| =tramp= | Built-in |
+#+begin_src emacs-lisp :results silent
+(setq tramp-default-method "ssh"
+      tramp-default-user user-login-name)
+#+end_src
+
+** Projects
+| =project= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; Install project.el from elpa if not using at least Emacs 27.1
+(use-package project
+  :straight t ;; (version< "27.1" emacs-version)
+  :general
+  (my/leader-def
+    "p" '(:keymap project-prefix-map :which-key "Project")))
+#+end_src
+
+** TODO Bookmarks
+
+** Recent files
+| =recentf= | Built-in |
+#+begin_src emacs-lisp :results silent
+  (use-package recentf
+    :defer 10 ; defer loading by 10s
+    :custom
+    (recentf-max-menu-items 10)
+    (recentf-max-saved-items 25)
+    (recentf-auto-cleanup "12:00pm") ; clear list at midnight
+    ;; No not remember these files
+    (recentf-exclude
+     (append
+      load-path
+      (list
+       "\\.lock\\'"
+       "\\.log\\'"
+       "\\.swa?p\\'"
+       "\\.bak\\'"
+       "\\.gz\\'"
+       "\\.zip\\'"
+       "\\~\\'"
+       temporary-file-directory
+       MY/XDG-CACHE-HOME
+       "/ssh:"
+       "/sudo:")))
+    :config
+    (recentf-mode +1)
+    ;; Save every 30 minutes
+    (run-at-time 30 (* 30 60) 'recentf-save-list))
+#+end_src
+
+| =simple= | Built-in |
+#+begin_src emacs-lisp :results silent
+(setq kill-ring-max 100)
+
+(set-display-table-slot standard-display-table 'wrap ?\ )
+(global-visual-line-mode +1) ; Soft wrap in all buffers
+
+(add-hook 'prog-mode-hook #'auto-fill-mode)
+;; (add-hook 'org-mode-hook #'auto-fill-mode)
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(customize-set-variable 'sentence-end-double-space nil)
+
+(defun my/fill-or-unfill ()
+  "Like `fill-paragraph', but unfill if used twice."
+  (interactive)
+  (let ((fill-column
+         (if (eq last-command 'my-fill-or-unfill)
+             (progn (setq this-command nil)
+                    (point-max))
+           fill-column)))
+    (call-interactively 'fill-paragraph nil (vector nil t))))
+
+(global-set-key [remap fill-paragraph] 'my/fill-or-unfill)
+#+end_src
+
+** Spelling
+Ispell can check the spelling of words in a buffer.
+Flyspell will highlight misspelling of words in the buffer.
+The =flyspell-prog-mode= will only check for spelling inside of Comments.
+| =flyspell= | Built-in |
+| =ispell=   | Built-in |
+#+begin_src emacs-lisp :results silent
+;; SEE: https://200ok.ch/posts/2020-08-22_setting_up_spell_checking_with_multiple_dictionaries.html
+;; TODO: defer
+(use-package ispell
+  :if (executable-find "hunspell")
+  ;; :defer 1
+  :custom
+  (ispell-program-name "hunspell")
+  (ispell-dictionary "en_US,de_DE")
+  (ispell-personal-dictionary "~/.hunspell_personal")
+  :config
+  ;; `ispell-set-spellchecker-params' has to be called
+  ;; before `ispell-hunspell-add-multi-dic' will work
+  (ispell-set-spellchecker-params)
+  (ispell-hunspell-add-multi-dic ispell-dictionary)
+  ;; The personal dictionary file has to exist,
+  ;; otherwise hunspell will silently not use it.
+  (unless (file-exists-p ispell-personal-dictionary)
+    (write-region "" nil ispell-personal-dictionary nil 0)))
+
+(use-package flyspell
+  :custom
+  (flyspell-delay 0.25)
+  (flyspell-issue-message-flag nil) ; Don't emits messages
+  :hook
+  ((text-mode conf-mode) . flyspell-mode)
+  (prog-mode             . flyspell-prog-mode))
+#+end_src
+
+** Pairs
 | =elec-pair= | Built-in |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 ;; Automatically insert closing pairs like ", ), ], }
-;; REVIEW: variables and other modes like `electric-quot-mode'
 (use-package elec-pair
   :custom
   (electric-pair-preserve-balance t)
@@ -581,11 +1302,11 @@ Hide the mouse cursor in the bottom left corner of the screen.
   :config
   (electric-quote-mode -1)
   (electric-indent-mode +1)
-  :hook (prog-mode . electric-pair-mode))
+  :hook (prog-mode . electric-pair-local-mode))
 #+end_src
 
 | =paren= | Built-in |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 ;; Highlight matching parenthesis
 (use-package paren
   :custom
@@ -595,330 +1316,143 @@ Hide the mouse cursor in the bottom left corner of the screen.
   :hook (prog-mode . show-paren-mode))
 #+end_src
 
-| =whitespace= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; Highlight some non printable characters like tabs and trailing spaces
-(use-package whitespace
+** Diary
+| =calendar= | Built-in |
+| =solar=    | Built-in |
+| =appt=     | Built-in |
+#+begin_src emacs-lisp :results silent
+(custom-set-variables
+ '(display-time-24hr-format t)
+ '(display-time-format "%H:%M"))
+
+(use-package calendar
+  :commands calendar
   :custom
-  (whitespace-line-column nil) ;; use the value of `fill-column'
-  ;; https://github.com/hlissner/doom-emacs/issues/109
-  (whitespace-display-mappings
-   '((tab-mark ?\t [?» ?\t])
-     (newline-mark 10 [?¬ 10])
-     (space-mark 32 [?·] [46])))
-  (whitespace-style '(face spaces space-mark tabs tab-mark space-before-tab space-after-tab
-                           newline newline-mark trailing lines-tail))
-  :config
-  (defun my/whitespace-write-contents ()
-    "Delete trailing whitespaces before saving."
-    ;; This is buffer-local by default
-    (add-hook 'write-contents-functions
-              #'(lambda()
-                  (save-excursion
-                    (delete-trailing-whitespace)))
-              -90)) ; -100: run first / 100: rust last
-  :hook
-  (prog-mode       . whitespace-mode)
-  (whitespace-mode . my/whitespace-write-contents))
-#+end_src
-
-| =simple= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; Auto break lines when hitting the `fill-column' limit
-(use-package simple
-  :custom
-  (kill-ring-max 100) ; (default: 60)
-  :init
-  (global-visual-line-mode +1) ; Soft wrap in all buffers
-  :config
-  ;; Don't show a backslash when wrapping a line
-  (set-display-table-slot standard-display-table 'wrap ?\ )
-  ;; Enable `auto-fill-mode' for the current buffer
-  :hook (prog-mode . auto-fill-mode))
-#+end_src
-
-| =ediff= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; https://oremacs.com/2015/01/17/setting-up-ediff/
-(use-package ediff
-  :commands ediff-mode
-  :custom
-  (ediff-window-setup-function #'ediff-setup-windows-plain)
-  (ediff-split-window-function #'split-window-horizontally)
-  (ediff-diff-options "-w") ; ignore whitespaces
-  :config
-  (ediff-setup-keymap)
-  (defun my/ediff-save-window-config ()
-    "Save the state of the window configuration before invoking ediff."
-    (setq ediff-saved-window-configuration
-          (current-window-configuration)))
-  (defun my/ediff-restore-window-config ()
-    "Restore the window configuration to how it used to be."
-    (set-window-configuration ediff-saved-window-configuration))
-  :hook
-  (ediff-before-setup         . my/ediff-save-window-config)
-  ((ediff-quit ediff-suspend) . my/ediff-restore-window-config))
-#+end_src
-
-| =ivy= | [[https://github.com/abo-abo/swiper][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; Ivy is a generic completion mechanism for Emacs.
-(use-package ivy
-  :straight t
-  :custom
-  (ivy-wrap t)
-  (ivy-height 12)
-  (ivy-auto-select-single-candidate t)
-  ;; Do not close the minibuffer with delete
-  (ivy-on-del-error-function nil)
-  (ivy-extra-directories nil) ;; Don't show . and .. when selecting files
-  ;; Add bookmarks and recentf to buffer list
-  (ivy-use-virtual-buffers t)
-  :config
-  ;; REVIEW: use fuzzy matching in any case?
-  (setq ivy-re-builders-alist
-        '((swiper . ivy--regex-ignore-order)
-          (t      . ivy--regex-plus)))
-  :bind
-  (:map ivy-minibuffer-map
-        ;; Don't finish the completion when selecting a directory
-        ("<return>"    . ivy-alt-done)
-        ("RET"         . ivy-alt-done)
-        ;; Allow selecting a directory
-        ("M-<return>"  . ivy-done)
-        ("M-RET"       . ivy-done)
-        ("<tab>"       . ivy-next-line)
-        ("TAB"         . ivy-next-line)
-        ("<backtab>"   . ivy-previous-line)
-        ("S-TAB"       . ivy-previous-line)
-        ("C-w"         . ivy-backward-kill-word))
-  :hook (after-init . ivy-mode))
-#+end_src
-
-| =counsel= | [[https://github.com/abo-abo/swiper][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; NOTE: :after `ivy' doesn't work
-(use-package counsel
-  :straight t
-  :after evil
-  :config
-  (setenv "FZF_DEFAULT_COMMAND" "rg --files --hidden --follow --glob '!.git'")
-  :bind
-  ;; ;; Replace evil search with Swiper
-  ([remap isearch-forward]         . #'swiper-isearch)
-  ([remap isearch-backward]        . #'swiper-isearch-backward)
-  (:map evil-normal-state-map
-        ("/" . swiper)
-        ("?" . swiper-backward))
-  :hook (ivy-mode . counsel-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package prescient
-  :straight t
-  :commands prescient-persist-mode
-  :custom
-  (prescient-history-length 50) ; Remember the last 50 entries
-  (prescient-sort-length-enable nil) ;; Don't sort by shortest-first.
-  (prescient-filter-method '(literal regexp fuzzy))) ; NOTE: not used for now
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package ivy-prescient
-  :straight t
-  :after counsel
-  :custom
-  (ivy-prescient-enable-filtering nil) ; Let ivy handle the filtering
-  (ivy-prescient-retain-classic-highlighting t) ; Keep classic highlighting
-  :config
-  (ivy-prescient-mode +1)
-  (prescient-persist-mode +1))
-#+end_src
-
-| =recentf= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package recentf
-  :defer 10 ;; defer loading by 10s
-  ;; ivy might call this function before this package will load
-  :commands recentf-mode
-  :custom
-  (recentf-max-menu-items 25)
-  (recentf-max-saved-items 25)
-  (recentf-auto-cleanup "12:00pm") ; clear list at midnight
-  ;; No not remember these files
-  (recentf-exclude '("\\.lock\\'"
-                     "\\.log\\'"
-                     "\\.swa?p\\'"
-                     "\\.bak\\'"
-                     "\\~\\'"))
-  :config
-  (recentf-mode +1)
-  ;; Save every 15 minutes
-  (run-at-time nil (* 15 60) 'recentf-save-list))
-#+end_src
-
-| =project= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package project
-  :defer t
-  :general
-  (my/leader-def
-    "p" '(:keymap project-prefix-map :which-key "Project")))
-#+end_src
-
-| =tramp= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: is the usage of `use-package' really necessary?
-(use-package tramp
-  :custom
-  (tramp-default-method "ssh")
-  (tramp-default-user user-login-name))
-#+end_src
-
-| =dired= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; Emacs build-in file manager
-(use-package dired
-  :commands (dired dired-jump)
-  :custom
-  (dired-auto-revert-buffer t)
-  (dired-dwim-target t)
-  (dired-listing-switches "-Ahlv --group-directories-first") ;; Change the arguments passed to ls
-  (dired-hide-details-hide-symlink-targets nil) ;; ...
-  (dired-recursive-copies 'always)
-  ;; Omit dotfiles (which are included by `dired-listing-switches')
-  (dired-omit-files "^\\..*")
-  :config
-  ;; use dired-find-alternate-file instead of `dired-find-file' to prevent dired to create so many buffers.
-  (put 'dired-find-alternate-file 'disabled nil)
-  ;; A hydra for conveniently using dired commands
-  ;; TODO: close hydra when the dired buffer is killed
-  (defhydra my/hydra-dired (:hint nil :color pink)
-    "Dired commands"
-    ("(" dired-hide-details-mode "Detail" :column "View")
-    (")" dired-omit-mode "Omit")
-    ("?" dired-summary "Summary")
-    ("g" revert-buffer "Refresh")
-    ("=" dired-diff "Diff")
-    ("v" dired-view-file "File")
-    ("m" dired-mark "Mark" :column "Marking")
-    ("t" dired-toggle-marks "Toggle")
-    ("u" dired-unmark "Unmark")
-    ("U" dired-unmark-all-marks "Unmark all")
-    ("z" dired-do-compress "(Un)compress" :column "Actions")
-    ("+" dired-create-directory "Create")
-    ("T" dired-create-empty-file "Touch")
-    ("R" dired-do-rename "Rename")
-    ("S" dired-do-symlink "Link")
-    ("C" dired-do-copy "Copy")
-    ("D" dired-do-delete "Delete")
-    ("M" dired-do-chmod "Chmod" :column "Permissions")
-    ("O" dired-do-chown "Owner")
-    ("G" dired-do-chgrp "Group")
-    ;; Mapping q would override view-quit
-    ("." nil "Quit" :column "Exit" :exit t))
-  :bind
-  ([remap dired-find-file] . #'dired-find-alternate-file)
+  (calendar-mark-diary-entries-flag t)
+  (calendar-mark-holidays-flag t)
+  (calendar-mode-line-format nil)
+  (calendar-week-start-day 1) ; Monday
+  (calendar-date-style 'european)
+  (calendar-date-display-form calendar-european-date-display-form)
+  (calendar-time-zone-style 'numeric) ; Emacs 28.1
+  ;; Stuttgart
+  (calendar-latitude 35.17)
+  (calendar-longitude 33.36)
+  (calendar-standard-time-zone-name "+0100")
+  (calendar-daylight-time-zone-name "+0200") ; Summertime
   :general
   (:states 'normal
-           :keymaps 'dired-mode-map
-           "h" 'dired-up-directory
-           "l" 'dired-find-file
-           ;; default `dired-do-touch' (change timestamp)
-           ;; "T" 'dired-create-empty-file
-           "." 'my/hydra-dired/body))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package latex
-  :straight auctex
-  :commands latex-mode
-  :custom
-  (reftex-plug-into-AUCTeX t)
-  (reftex-use-external-file-finders t)
-  :config
-  (LaTeX-math-mode +1))
-
-(use-package tex
-  :after latex
-  :custom
-  (TeX-PDF-mode t)
-  (TeX-auto-save t)
-  (TeX-parse-self t)
-  :config
-  (setq-default TeX-master nil)
-  :hook
-  (TeX-after-compilation-finished-functions
-   . TeX-revert-document-buffer))
-#+end_src
-
-Using the version of org that comes with Emacs by default.
-Installing org with straight caused a [[https://orgmode.org/worg/org-faq.html#mixed-install][mixed install]] somehow.
-| =org= | [[https://orgmode.org/][Org Mode]] |
-#+begin_src emacs-lisp :tangle yes
-;; A major mode for convenient plain text markup - and much more.
-(use-package org
-  ;; defer the loading of org-mode possible. If any of the commands below
-  ;; get run befor this time load `org-mode' imediatly
-  :commands (org-mode org-agenda)
-  :custom
-  ;; use tab like in the language major mode
-  (org-src-tab-acts-natively t)
-  ;; do not indent everything when adding a new line
-  (org-edit-src-content-indentation 0)
-  ;; for the setting above to work, this needs to be nil
-  (org-src-preserve-indentation nil)
-  (org-directory "~/Nextcloud/Notes/")
-  (org-log-done 'time) ;; Add timestamp whenever task is finished
-  (org-log-into-drawer t)
-  (org-hide-leading-stars t) ;; Don't show all the stars in front of the headings
-  ;; TODO: add all *.org-files from `org-directory'
-  (org-agenda-files (list (expand-file-name "todo.org" org-directory)))
-  (org-agenda-start-with-log-mode t)
-  (org-agenda-window-setup 'other-tab) ;; Open `org-agenda' in a new tab.
-  :general
-  ;; Only show these bindings when in org-mode
+           :keymaps 'calendar-mode-map
+           "ib" 'diary-insert-block-entry
+           "ic" 'diary-insert-cyclic-entry
+           "ia" 'diary-insert-anniversary-entry
+           "id" 'diary-insert-entry
+           "iy" 'diary-insert-yearly-entry
+           "iw" 'diary-insert-weekly-entry
+           "im" 'diary-insert-monthly-entry)
   (my/leader-def
-    ;; :states 'normal
-    :keymaps 'org-mode-map
-    "o"  '(:keymap org-mode-map :which-key "Org"))
-  ;; TODO: keybindings
-  :hook
-  ;; Don't worry about indentation in the outline structure anymore
-  (org-mode . org-indent-mode))
-
-;; TODO: org habits
+    "c"   '(calendar :which-key "Calendar"))
+  :hook (calendar-today-visible . calendar-mark-today))
 #+end_src
 
-Org babels
-#+begin_src emacs-lisp :tangle yes
-(use-package ob
-  :after org
+#+begin_src emacs-lisp :results silent
+(use-package diary-lib
+  :after calendar
+  :commands diary-mode
+  :custom-face
+  (diary-time ((t (:slant italic))))
   :custom
-  (org-confirm-babel-evaluate nil)
-  (org-babel-python-command "python3")
+  (diary-file "~/Nextcloud/diary")
+  (diary-comment-start "#")
+  (diary-comment-end "")
+  (diary-include-string "@")
+  (diary-nonmarking-symbol "!")
+  (diary-show-holidays-flag t)
+  (diary-display-function #'diary-fancy-display)
+  (diary-header-line-format nil) ; do not show the "Diary" header
+  (diary-list-include-blanks t)
+  (diary-number-of-entries 7)
+  (diary-abbreviated-year-flag nil)
   :config
-  (setq org-structure-template-alist
-        (append '(("el" . "src emacs-lisp")
-                  ("py" . "src python")
-                  ("ja" . "src java")
-                  ("js" . "src js")
-                  ("ru" . "src ruby"))
-                  org-structure-template-alist))
+  (add-hook 'diary-list-entries-hook #'diary-sort-entries 100) ; need to be last item in hook
+  :hook
+  (diary-list-entries . diary-include-other-diary-files)
+  (diary-mark-entries . diary-mark-included-diary-files))
+
+(defun my/diary-file-mode ()
+  "Activate `diary-mode' when working with the diary."
+  (if (string-match diary-file (buffer-file-name))
+      (diary-mode)))
+
+(add-hook 'find-file-hooks #'my/diary-file-mode)
+#+end_src
+
+#+begin_src emacs-lisp :results silent
+(use-package appt
+  :custom
+  (appt-audible t) ; default
+  (appt-display-diary nil) ; don't show the diary when activating this package
+  (appt-message-warning-time 10)
+  (appt-display-interval 5)
+  (appt-display-mode-line t)
+  :hook (after-init . appt-activate))
+#+end_src
+
+** Org
+A major mode for convenient plain text markup - and much more.
+| =org= | [[https://orgmode.org/][Org Mode]] |
+#+begin_src emacs-lisp :results silent
+(use-package org
+  :straight t
+  :commands org-mode
+  :custom-face
+  (org-headline-done ((t (:strike-through t))))
+  :custom
+  (org-directory "~/Nextcloud/Notes/")
+  (org-startup-indented t)
+  (org-startup-folded 'showeverything) ; default
+  (org-startup-with-inline-images nil) ; default
+  (org-ellipsis " ▼")
+  (org-hide-emphasis-markers t)
+  (org-src-window-setup 'current-window)
+  (org-src-fontify-natively t)
+  (org-src-tab-acts-natively t)
+  (org-src-preserve-indentation t)
+  (org-log-done 'time) ; Add timestamp whenever task is finished
+  (org-log-into-drawer t)
+  (org-enforce-todo-checkbox-dependencies t)
+  (org-hide-leading-stars t)
+  (org-image-actual-width 300) ; Use smaller image previews
+  (org-confirm-babel-evaluate nil)
+  :config
+  ;; Ensure that the `org-directory' exists
+  (make-directory org-directory t)
   (org-babel-do-load-languages
    'org-babel-load-languages
-   '((C      . t)
-     (java   . t)
-     (python . t)
-     (ruby   . t)
-     (sql    . t)
-     (latex  . t)
-     (js     . t))))
+   '((emacs-lisp . t)
+     (latex      . t)
+     (js         . t)
+     (shell      . t)))
+  ;; Prevent Org from interfering with my key bindings.
+  (remove-hook 'calendar-mode-hook #'org--setup-calendar-bindings))
 #+end_src
 
+#+begin_src emacs-lisp :results silent
+(use-package org-agenda
+  :straight org
+  :commands org-agenda
+  :custom
+  ;; Just all files inside the default `org-directory'.
+  (org-agenda-files (list org-directory))
+  (org-agenda-include-diary t)
+  (org-agenda-start-with-log-mode t)
+  (org-agenda-window-setup 'only-window)
+  (org-icalendar-use-scheduled '(event-if-todo))
+  (org-icalendar-use-deadline '(event-if-todo)))
+#+end_src
 
 [[https://github.com/Somelauw/evil-org-mode/blob/master/evil-org-agenda.el][Evil Org Agenda]]
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (evil-set-initial-state 'org-agenda-mode 'motion)
 (evil-define-key 'motion org-agenda-mode-map
   ;; Unused keys: D, X
@@ -1026,274 +1560,135 @@ Org babels
   "-" 'org-agenda-manipulate-query-subtract)
 #+end_src
 
-Evil org mode
-#+begin_src emacs-lisp :tangle yes
-;; TODO: org-show-all , org-hide, ...
-(evil-define-key 'normal org-mode-map
-  "gh" 'outline-up-heading
-  "gp" 'outline-previous-heading
-  "gj" 'org-forward-heading-same-level
-  "gk" 'org-backward-heading-same-level
-  "gl" 'outline-next-visible-heading
-  "go" 'org-open-at-point
-  "t" 'org-todo
-  "T" 'org-insert-todo-heading
-  "H" 'org-shiftleft ; NOTE: rempas HIGH
-  ; "J" 'org-shiftdown ; NOTE: this remaps `evil-join'
-  "K" 'org-shiftup
-  "L" 'org-shiftright ; NOTE: remaps LOW
-  ; "o" 'org-insert-heading
-  "$" 'org-end-of-line
-  "^" 'org-beginning-of-line
-  "<" 'org-metaleft
-  ">" 'org-metaright
-  "-" 'org-cycle-list-bullet
-  (kbd "<tab>") 'org-cycle
-  (kbd "S-TAB") 'org-cycle)
-#+end_src
+[[https://www.orgroam.com/manual.html][Org-roam manual]]
+Dependencies:
+- sqlite
+- Graphviz
+- (ripgrep)
 
-#+begin_src emacs-lisp :tangle yes
-(defun my/exec-path-from-shell ()
-  "Ensure environment variables are the same as in the user's shell."
-  ;; Get the value of the PATH-variable and split at the ':'-character.
-  (let ((path-from-shell (shell-command-to-string "$SHELL -lc 'echo $PATH'")))
-    (setq exec-path (split-string path-from-shell path-separator))))
-
-;; Defer running this function: This can take up to 0.1 seconds.
-(add-hook 'after-init-hook #'my/exec-path-from-shell)
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(require 'ansi-color)
-
-(defun colorize-compilation-buffer ()
-  "Colorize the compilation buffer and get escapes parsed."
-  (ansi-color-apply-on-region compilation-filter-start (point-max)))
-
-(add-hook 'compilation-filter-hook #'colorize-compilation-buffer)
-#+end_src
-
-| =eshell= | Built-in |
-| =vterm=  | [[https://github.com/akermu/emacs-libvterm][Github]]   |
-#+begin_src emacs-lisp :tangle yes
-(defconst MY/TERM-HISTORY-SIZE 5000)
-
-;; TODO: configure
-(use-package eshell
-  :commands eshell
-  :custom
-  (eshell-history-size MY/TERM-HISTORY-SIZE)
-  (eshell-buffer-maximum-lines MY/TERM-HISTORY-SIZE)
-  (eshell-hist-ignoredups t)
-  :hook
-  (eshell-preoutput-filter-functions . ansi-color-filter-apply))
-
-(use-package vterm
+| =org-roam= | [[https://github.com/org-roam/org-roam][Github]] |
+#+begin_src emacs-lisp :results silent
+;; TODO: use and bind e.g. `org-roam-dailies-find-today'
+(use-package org-roam
+  :if (executable-find "sqlite3")
   :straight t
-  :if (and (executable-find "cmake")
-           (executable-find "libtool"))
-  :commands (vterm vterm-other-window)
   :custom
-  ; kill the buffer when quitting the session
-  (vterm-kill-buffer-on-exit t)
-  (vterm-max-scrollback MY/TERM-HISTORY-SIZE)
-  ; Compile without `vterm-module' without asking first
-  (vterm-always-compile-module t)
-  :config
-  (defun my/vterm-setup-cursor ()
-    "Adjust the evil-cursor for the terminal."
-    (setq-local evil-move-cursor-back nil
-                evil-insert-state-cursor 'box))
+  (org-roam-graph-viewer nil) ; Open inside of Emacs instead of a browser
+  (org-roam-directory org-directory)
   :bind
-  ([remap term] . #'vterm)
-  :hook
-  (vterm-mode . my/vterm-setup-cursor)
-  ; Make sure the buffer name is unique, so that we can use multiple
-  ; `vterm' buffers at the same time
-  (vterm-mode . rename-uniquely))
+  (:map org-roam-mode-map
+        (("C-c n l" . org-roam)
+         ("C-c n f" . org-roam-find-file)
+         ("C-c n g" . org-roam-graph))
+        :map org-mode-map
+        (("C-c n i" . org-roam-insert))
+        (("C-c n I" . org-roam-insert-immediate)))
+  :hook (after-init . org-roam-mode))
 #+end_src
 
-| =elpher= | [[https://thelambdalab.xyz/elpher/][The Lambda Lab]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package elpher
-  :straight t
-  :commands elpher-go
+** LaTeX
+[[https://www.gnu.org/software/auctex/manual/auctex.pdf][AUCTeX Manual]]
+#+begin_src emacs-lisp :results silent
+(use-package latex
+  :after tex-mode ; `tex-mode' is the default major mode for *.tex-files.
   :custom
-  (elpher-use-tls t)
-  (elpher-ipv4-always t)
-  (elpher-bookmarks-file "~/Nextcloud/Documents/elpher-bookmarks"))
+  (LaTeX-electric-left-right-brace t) ; automatic close braces
+  ;; `LaTeX-section-hook' runs after inserting a section
+  ;; List of hooks to run when a new section is inserted.
+  ;; NOTE: use `TeX-insert-dollar' to insert just the dollar character.
+  (LaTeX-section-hook
+   '(LaTeX-section-heading
+     LaTeX-section-title
+     LaTeX-section-toc
+     LaTeX-section-section
+     LaTeX-section-label))
+  :config
+  (defun my/TeX-electric-math-enable ()
+    "The dollar character will insert symbols for opening / closing inline
+  equasions and put the point between them."
+    (set (make-local-variable 'TeX-electric-math)
+         (cons "\\(" "\\)")))
+  :hook (LaTeX-mode . my/TeX-electric-math-enable))
+
+(use-package reftex
+  :custom
+  (reftex-plug-into-AUCTeX t) ;; turn all AuTeX plugs on
+  :hook (LaTeX-mode . reftex-mode))
+
+(use-package tex
+  :after latex
+  :custom
+  (TeX-auto-save t)
+  (TeX-parse-self t)
+  (TeX-PDF-mode t) ; use PDFTeX
+  ;; (TeX-view-program-selection '((output-pdf "PDF Tools"))) ; use pdf-tools
+  :config
+  (setq-default TeX-master nil)
+  :hook
+  ;; required when using an emacs-internal viewer for documents.
+  (TeX-after-compilation-finished-functions
+   . TeX-revert-document-buffer))
+
+;; https://joostkremers.github.io/ebib/ebib-manual.html
+(use-package ebib
+  :straight t
+  :commands ebib
+  :custom
+  (ebib-uniquify-keys t) ; use unique keys and prevent duplicate keys
+  (ebib-keywords-field-keep-sorted t)) ; sort keywords and remove duplicates
+  ;; :bind
+  ;; ("C-c e" . ebib))
 #+end_src
 
+** Zen Mode
 | =writeroom-mode= | [[https://github.com/joostkremers/writeroom-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package writeroom-mode
   :straight t
   :commands writeroom-mode
   :custom
-  (writeroom-width 90) ; (default: 80)
+  (writeroom-width 100) ; (default: 80)
   (writeroom-bottom-divider-width 0)
   (writeroom-extra-line-spacing 0.20)
   (writeroom-restore-window-config t)
   (writeroom-local-effects
-   '(display-line-numbers-mode
-     auto-fill-mode))
+   '(auto-fill-mode
+     scroll-lock-mode
+     my/writeroom-face-mode))
   :config
-  (defun my/writeroom-enable ()
-    "lorem."
-    (display-line-numbers-mode -1)
-    (text-scale-set 1))
-  (defun my/writeroom-disable ()
-    "lorem."
-    (display-line-numbers-mode +1)
-    (text-scale-set 0))
+  (defun my/writeroom-face-mode (arg)
+    "Change the font `for writeroom-mode'"
+    (set (make-local-variable 'buffer-face-mode-face) 'fixed-pitch-serif)
+    (buffer-face-mode arg))
   ;; calculate margins after changing the text size
-  (advice-add 'text-scale-adjust :after
-              #'visual-fill-column-adjust)
+  ;; REVIEW: remove this advise when done with writeroom-mode
+  (advice-add 'text-scale-adjust :after #'visual-fill-column-adjust)
   :bind
   (:map writeroom-mode-map
-        ("C-+" . writeroom-increase-width)
-        ("C--" . writeroom-decrease-width)
-        ("C-=" . writeroom-adjust-width))
+        ("C--"   . writeroom-decrease-width)
+        ("C-+"   . writeroom-increase-width)
+        ("C-="   . writeroom-increase-width)
+        ("C-0"   . writeroom-adjust-width))
   :general
   (my/leader-def
+    :predicate '(derived-mode-p 'text-mode 'conf-mode 'prog-mode)
     "z"   '(writeroom-mode :which-key "Zen"))
   :hook
-  (writeroom-mode-enable . my/writeroom-enable)
-  (writeroom-mode-disable . my/writeroom-disable))
+  (writeroom-mode-enable  . (lambda () (display-line-numbers-mode -1)))
+  (writeroom-mode-disable . (lambda () (display-line-numbers-mode +1))))
 #+end_src
 
-Emacs client for Music Player Daemon (MPD)
-
-| =mpdel=     | [[https://github.com/mpdel/mpdel][Github]] |
-| =ivy-mpdel= | [[https://github.com/mpdel/ivy-mpdel][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; TODO: defer loading this package until it will be actually used
-(use-package mpdel
-  :straight t
-  :defer 10
-  :custom
-  (mpdel-prefix-key "") ; do not bind `mpdel' this way
-  :config
-  (mpdel-mode +1)
-  :general
-  (my/leader-def
-    "m" '(:keymap mpdel-core-map :which-key "Listen")))
-
-(use-package ivy-mpdel
-  :straight t
-  :after (ivy mpdel))
-#+end_src
-
-| =elfeed= | [[https://github.com/skeeto/elfeed][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: setup motion keymap for elfeed search like with org-agenda
-
-;; https://regex101.com/
-;; SEE: `regexp-builder' is very usefull
-
-(setq browse-url-browser-function
-      '(("https?:\/\/.*\..*\/.*\.\\(?:mp3\\|mp4\\|flac\\|ogg\\|wav\\)\\(?:\?.+\\)?"
-         . my/browse-url-vlc)
-        ("." . browse-url-default-browser)))
-
-(defun my/browse-url-vlc (url &optional single)
-  (call-process "vlc" nil 0 nil url))
-
-;; (setq browse-url-generic-program ...) mail-user-agent
-
-;; TODO: map go to visual mode and open all feeds
-
-(use-package elfeed
-  :straight t
-  :if (executable-find "curl")
-  :commands elfeed
-  :custom
-  (elfeed-db-directory
-   (expand-file-name "elfeed" (or (getenv "XDG_CACHE_HOME") "~/.cache")))
-  (elfeed-show-entry-switch #'display-buffer) ; do not swith to the new buffer
-  :config
-  (setq url-queue-timeout 30)
-  (setq-default elfeed-search-filter "@1-week-ago +unread ")
-  ;; since we use an additional window to display the feed with efleed-show-mode
-  ;; wee need to clean this window up when leaving the buffer
-  (advice-add 'elfeed-kill-buffer :after #'delete-window)
-  (defun my/elfeed-cleanup ()
-    "Removed old feeds."
-    (elfeed-make-tagger :before "2 weeks ago"
-                        :remove 'unread))
-  :general
-  ;; FIXME: doesn't work
-  (:states 'normal
-           :keymaps 'elfeed-search-mode-map
-           "gr" 'elfeed-update)
-  :hook
-  (elfeed-db-update . elfeed-db-compact) ; compress the db after updating it
-  (elfeed-new-entry . my/elfeed-cleanup)) ; cleanup old feeds when receiving new
-#+end_src
-
-[[https://www.reddit.com/r/emacs/comments/bfsck6/mu4e_for_dummies/][Mu4e for dummies]]
-#+begin_src emacs-lisp :tangle yes
-(use-package mu4e
-  :if (executable-find "mbsync")
-  ;; Defer loading this package by 30 seconds.
-  :load-path "/usr/local/share/emacs/site-lisp/mu4e"
-  :defer 30
-  :commands mu4e
-  :init
-  ;; Preference for a mail composition package
-  (setq mail-user-agent 'mu4e-user-agent)
-  :custom
-  ;; This is set to non-nil to avoid mail syncing issues when using mbsync
-  (mu4e-change-filenames-when-moving t)
-  ;; Refresh mail using isync every 30 minutes
-  (mu4e-update-interval (* 30 60))
-  (mu4e-get-mail-command "mbsync -a")
-  (mu4e-sent-messages-behavior 'sent)
-  (mu4e-context-policy 'pick-first)
-  (mu4e-compose-context-policy 'always-ask)
-  ;; Format composed mails
-  ;; TODO: review this variable and improve auto-formatting mail
-  (mu4e-compose-format-flowed t)
-  (mu4e-view-show-images nil);; Default value
-  ;; show full addresses in view message (instead of just names)
-  (mu4e-view-show-addresses t)
-  (mu4e-confirm-quit nil)
-  (mu4e-maildir (or (getenv "MAILDIR") "~/.mail"))
-  (mu4e-bookmarks
-   '((:name "Unread messages"  :query "flag:unread AND NOT flag:trashed" :key ?i)
-     (:name "Today's messages" :query "date:today..now" :key ?t)
-     (:name "Last 7 days"      :query "date:7d..now" :hide-unread t :key ?w)))
-  :config
-  (setq message-send-mail-function 'smtpmail-send-it
-        message-kill-buffer-on-exit t)
-  (mu4e t)) ;; Sync emails in the background when this package gets loaded
-#+end_src
-
-
-#+begin_src emacs-lisp :tangle yes
-(add-hook 'mu4e-compose-mode-hook
-    (defun my/mu4e-compose ()
-       "My settings for message composition."
-       (setq-local fill-column 66)
-       (visual-line-mode +1)
-       (use-hard-newlines -1)
-       (flyspell-mode +1)))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(use-package mu4e-org
-  :load-path "/usr/local/share/emacs/site-lisp/mu4e"
-  :commands mu4e
-  :config
-  (setq org-mu4e-convert-to-html t))
-#+end_src
-
+* Utilities
+** Git
 A Git Porcelain inside Emacs.
 | =magit= | [[https://magit.vc/][Magit]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
+;; SEE: https://magit.vc/manual/magit.pdf
 (use-package magit
+  :if (executable-find "git")
   :straight t
-  :defer t
+  :custom
+  (git-commit-summary-max-length 50)
   :general
   (my/leader-def
     "g"   '(:ignore t :which-key "Git")
@@ -1311,102 +1706,373 @@ A Git Porcelain inside Emacs.
     "gr"  'magit-rebase))
 #+end_src
 
-| =company= | [[https://github.com/company-mode/company-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package company
+** Help
+| =help=  | Built-in |
+| =eldoc= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; TODO: setup eldoc
+(use-package eldoc
+  :commands eldoc-mode
+  :init
+  (global-eldoc-mode -1)
+  :custom
+  (eldoc-idle-delay 0.75)
+  (eldoc-echo-area-display-truncation-message nil)
+  (eldoc-echo-area-use-multiline-p 0.25) ; use 25% of the frame
+  (eldoc-documentation-strategy 'eldoc-documentation-compose-eagerly)
+  (eldoc-echo-area-prefer-doc-buffer 'maybe))
+
+;; navigate back and forwards with </>-keys
+;; TODO more options: M-x customize-group help
+(setq help-window-select t) ; always select help window
+#+end_src
+
+** Mail
+[[https://www.reddit.com/r/emacs/comments/bfsck6/mu4e_for_dummies/][Mu4e for dummies]]
+#+begin_src emacs-lisp :results silent
+(use-package mu4e
+  :if (executable-find "mu")
+  :commands mu4e
+  :defer 30
+  :custom
+  (mail-user-agent 'mu4e-user-agent)
+  (read-mail-command 'mu4e)
+  ;; Preference for a mail composition package
+  (message-send-mail-function 'smtpmail-send-it)
+  (message-kill-buffer-on-exit t)
+  (mu4e-maildir (or (getenv "MAILDIR") "~/.mail"))
+  (mu4e-attachment-dir MY/XDG-DOWNLOAD-DIR)
+  ;; This is set to non-nil to avoid mail syncing issues when using mbsync
+  (mu4e-change-filenames-when-moving t)
+  ;; Refresh mail using isync every 30 minutes
+  (mu4e-update-interval (* 30 60))
+  (mu4e-get-mail-command "mbsync -a")
+  (mu4e-sent-messages-behavior 'sent)
+  (completing-read #'completing-read)
+  (mu4e-context-policy 'pick-first)
+  (mu4e-compose-context-policy 'always-ask)
+  (mu4e-compose-in-new-frame t)
+  (mu4e-view-show-images nil) ; Default value
+  ;; show full addresses in view message (instead of just names)
+  (mu4e-view-show-addresses t)
+  (mu4e-confirm-quit nil)
+  (mu4e-bookmarks
+   '((:name "Unread messages" :query "flag:unread AND NOT flag:trashed" :key ?i)
+     (:name "Today's messages" :query "date:today..now" :key ?t)
+     (:name "Last 7 days" :query "date:7d..now" :hide-unread t :key ?w)))
+  :config
+  (add-to-list
+   'mu4e-view-actions
+   '("View in Browser" . mu4e-action-view-in-browser) t)
+  (mu4e t))
+#+end_src
+
+| =org-msg= | [[https://github.com/jeremy-compostella/org-msg][Github]] |
+#+begin_src emacs-lisp :results silent
+;; NOTE: make images smaller with #+ATTR_HTML: :height 300px
+(use-package org-msg
   :straight t
   :custom
-  (company-backends
-   '((company-capf :with company-yasnippet)
-     (company-dabbrev-code
-      company-keywords
-      company-files
-      company-dabbrev)))
-  (company-require-match 'never)
-  (company-dabbrev-downcase nil)
-  (company-dabbrev-ignore-case nil)
-  (company-selection-wrap-around t)
-  (company-minimum-prefix-length 1)
-  (company-idle-delay 0.0)
-  (company-tooltip-width-grow-only t)
-  (company-tooltip-align-annotations t)
-  :bind
-  ([remap indent-for-tab-command] . #'company-indent-or-complete-common)
-  (:map company-active-map
-        ("<return>"  . company-complete-selection)
-        ("RET"       . company-complete-selection)
-        ("<tab>"     . company-select-next)
-        ("TAB"       . company-select-next)
-        ("<backtab>" . company-select-previous)
-        ("S-TAB"     . company-select-previous))
+  ;; FIXME: images are not shown
+  (org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t")
+  ;; REVIEW: `org-startup-truncated'
+  (org-msg-startup "hidestars noindent inlineimages") ; Do not autoindent org headings
+  (org-msg-greeting-fmt "\nHallo %s,\n\n")
+  (org-msg-greeting-fmt-mailto t)
+  (org-msg-default-alternatives
+   '((new           . (text html))
+     (reply-to-html . (text html))
+     reply-to-text  . (text)))
+  (org-msg-convert-citation t)
   :hook
-  ((prog-mode org-mode) . company-mode))
+  (mu4e-compose-pre  . org-msg-mode))
 #+end_src
 
-| =yasnippet=          | [[https://github.com/joaotavora/yasnippet][Github]] |
-| =yasnippet-snippets= | [[https://github.com/AndreaCrotti/yasnippet-snippets][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package yasnippet
+** Screenshots
+#+begin_src emacs-lisp :results silent
+(defun my/screenshot ()
+  "Take a screenshot of the current frame."
+  (interactive)
+  (let* ((filename
+          (expand-file-name
+           (format "Screenshot %s.svg" (format-time-string "%Y-%m-%d %H-%M-%S"))
+           MY/XDG-PICTURES-DIR))
+         (data (x-export-frames nil 'svg)))
+    (with-temp-file filename
+      (insert data))
+    (kill-new filename)
+    (message filename)))
+#+end_src
+
+** Links
+#+begin_src emacs-lisp :results silent
+(customize-set-variable 'url-queue-timeout 30)
+
+(defun my/download-file (url)
+  "Download and open a file with Emacs."
+  (interactive "sURL: ")
+  (setq url (browse-url-encode-url url))
+  (let ((file (url-file-local-copy url)))
+    (display-buffer (find-file-noselect file))))
+
+;; https://regex101.com/
+;; SEE: `regexp-builder' is very useful
+
+(customize-set-variable
+ 'browse-url-handlers
+ '(("https?:\\/\\/.+.[a-z]+/.+\\.\\(?:mp3\\|flac\\|ogg\\|wav\\)"
+    . my/browse-url-emms)
+   ("https?:\\/\\/.+.[a-z]+/.+\\.\\(?:mp4\\|mkv\\|avi\\|webm\\)"
+    . my/browse-url-emms)
+   ;; REVIEW: other image formats? (e.g. tiff)
+   ;; REVIEW: open images in Emacs buffer?
+   ("https?:\\/\\/.+.[a-z]+/.+\\.\\(?:png\\|jpe?g\\|webp\\)"
+    . my/browse-url-download)
+   ;; NOTE: comic book files work with Zathura as well
+   ("https?:\\/\\/.+.[a-z]+/.+\\.\\(?:ps\\|pdf\\|epub\\)"
+    . my/browse-url-download)
+   ;;view a single video or all videos on a channel
+   ("https:\\/\\/www\\.youtube\\.com/\\(?:watch\\?v=.+\\|c\\/.+\\/videos\\)"
+    . my/browse-url-emms)
+   ("https:\\/\\/youtu\\.be/.+"
+    . my/browse-url-emms)
+   ;; NOTE: lbry / odysee channels dont work with mpv
+   ("https:\\/\\/\\(?:open.lbry\\|odysee\\)\\.com/@.+:./.+:."
+    . my/browse-url-emms)
+   ("." . browse-url-default-browser)))
+
+(defun my/browse-url-emms (url &rest _)
+  "Open URL with `emms'"
+  ;; REVIEW: drop all this and just call `emms-play-url' when using mpv anyway?
+  (require 'emms-player-mpv)
+  (let ((emms-player-list '(emms-player-mpv)))
+    (emms-play-url url)))
+
+(defun my/browse-url-download (url &rest _)
+  "Download file from URL and open it with Emacs."
+  (my/download-file url))
+#+end_src
+
+** Web
+| =elpher= | [[https://thelambdalab.xyz/elpher/][The Lambda Lab]] |
+#+begin_src emacs-lisp :results silent
+;; NOTE: evil bindings may be coming...
+;; https://github.com/emacs-evil/evil-collection/issues/463
+(use-package elpher
   :straight t
+  :commands elpher
   :custom
-  (yas-prompt-functions '(yas-completing-prompt))
-  :config
-  (yas-reload-all)
-  :hook (prog-mode . yas-minor-mode))
+  (elpher-use-tls t)
+  (elpher-ipv4-always t)
+  ;; TODO: other path!
+  (elpher-bookmarks-file "~/Nextcloud/Documents/elpher-bookmarks"))
+#+end_src
 
-(use-package yasnippet-snippets
+** Feeds
+Bookmarks of search queries can be set with =bookmark-set=.
+| =elfeed= | [[https://github.com/skeeto/elfeed][Github]] |
+#+begin_src emacs-lisp :results silent
+;; TODO: use generic colors
+(defface my/elfeed-entry-important
+  '((t :foreground "#c13400"))
+  "Marks an important Elfeed entry.")
+
+(defface my/elfeed-entry-junk
+  '((t :foreground "#c7b4b4"))
+  "Marks an important Elfeed entry.")
+
+;; REVIEW: move function definitons out of here? `eval-after-load'?
+(use-package elfeed
   :straight t
-  :after yasnippet)
-#+end_src
-
-| =flyspell= | Built-in |
-| =ispell=   | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package flyspell
+  :defer 30 ; automatically load after 30s
+  :commands elfeed
   :custom
-  (flyspell-delay 0.25)
-  (flyspell-issue-message-flag nil)
-  :hook
-  (text-mode . flyspell-mode)
-  (prog-mode . flyspell-prog-mode))
-
-(use-package ispell
-  :after flyspell
-  :custom
-  (ispell-program-name "hunspell")
-  (ispell-dictionary "en_US,de_DE")
+  (elfeed-enclosure-default-dir MY/XDG-DOWNLOAD-DIR)
+  (elfeed-search-title-min-width 20)
+  (elfeed-search-title-max-width 100)
+  (elfeed-db-directory (expand-file-name "elfeed" MY/XDG-CACHE-HOME))
+  (elfeed-show-entry-switch #'display-buffer) ; do not switch to the new buffer
+  (elfeed-search-remain-on-entry nil) ; default
+  (elfeed-search-filter "@1-week-ago -junk +unread ")
+  (elfeed-curl-timeout url-queue-timeout)
   :config
-  (ispell-set-spellchecker-params)
-  (ispell-hunspell-add-multi-dic ispell-dictionary))
-#+end_src
-
-| =flymake= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package flymake
-  :config
-  (defhydra my/hydra-flymake
-    (:pre (flymake-show-diagnostics-buffer)
-          :post (quit-windows-on (format "*Flymake diagnostics for %s*" (buffer-name)))
-          :hint nil)
-    "Errors"
-    ("j"  flymake-goto-next-error "Next")
-    ("k"  flymake-goto-prev-error "Previous")
-    ("gg" (progn (goto-char (point-max)) (flymake-goto-next-error)) "First")
-    ("G"  (progn (goto-char (point-max)) (flymake-goto-prev-error)) "Last")
-    ("q"  nil))
+  (setq elfeed-search-face-alist
+        (append '((important my/elfeed-entry-important)
+                  (junk      my/elfeed-entry-junk))
+                elfeed-search-face-alist))
+  (defun elfeed-kill-buffer ()
+    "Kill the elfeed view buffer."
+    (interactive)
+    (kill-buffer-and-window))
+  ;; (advice-add 'elfeed-kill-buffer :after #'delete-window)
+  ;; REVIEW: is there any hook to use instead of this?
+  (advice-add 'elfeed :after #'my/elfeed-search-update-on-window-change)
+  ;; NOTE: dont use :hook because this would load this package.
+  ;; compress the db after updating it.
+  (add-hook 'kill-emacs-hook #'elfeed-db-compact)
+  (run-with-timer 1 (* 15 60) 'elfeed-update) ; update every 15 minutes
+  ;; Entries older than 2 weeks are marked as read
   :general
-  ;; (my/leader-def "ne" '(my/hydra-flymake/body :which-key "Errors"))
-  :hook (prog-mode . flymake-mode))
+  (:states 'normal
+           :keymaps 'elfeed-search-mode-map
+           "r" 'my/elfeed-search-mark-all-as-read
+           "i" 'my/elfeed-search-toggle-important
+           "d" 'my/elfeed-search-toggle-junk))
+
+;; NOTE: function to bind in `elfeed-search-mode-map' need to be interactive.
+(defun my/elfeed-search-mark-all-as-read ()
+  "Mark all feeds in the current view as read."
+  (interactive)
+  (mark-whole-buffer)
+  (elfeed-search-untag-all-unread))
+
+;; NOTE: must return an interactive function
+(defun my/elfeed-search-toggle-important ()
+  "Mark selected feeds as important."
+  (lambda) (interactive) (elfeed-search-toggle-all 'important))
+
+(defun my/elfeed-search-toggle-junk ()
+  "Mark selected feeds as junk."
+  (lambda) (interactive) (elfeed-search-toggle-all 'junk))
+
+;; this is the only way the correct local buffer is selected
+(defun my/elfeed-search-update-on-window-change ()
+  "Update Elfeeds search view after the window changes."
+  (add-hook 'window-configuration-change-hook
+            #'elfeed-search-update--force 100 t))
 #+end_src
 
+** Music
+[[https://www.gnu.org/software/emms/manual/][EMMS Manual]]
+#+begin_src emacs-lisp :results silent
+(use-package emms
+  :straight t
+  :commands emms-smart-browse
+  :defer 30
+  :custom
+  (emms-player-list '(emms-player-mpv))
+  (emms-playlist-default-major-mode #'emms-playlist-mode)
+  (emms-source-file-default-directory MY/XDG-MUSIC-DIR)
+  (emms-browser-covers #'emms-browser-cache-thumbnail-async)
+  (emms-browser-thumbnail-small-size 64)
+  (emms-browser-thumbnail-medium-size 128)
+  (emms-seek-seconds 15) ; default 10
+  :config
+  (emms-all)
+  (emms-history-load)
+  :bind
+  ("<XF86AudioPlay>" . emms-pause)
+  ("<XF86AudioStop>" . emms-stop)
+  ("<XF86AudioPrev>" . emms-previous)
+  ("<XF86AudioNext>" . emms-next)
+  :general
+  (my/leader-def "m" '(emms :which-key "Music")))
+#+end_src
+
+** Terminal
+*** Compilation
+#+begin_src emacs-lisp :results silent
+;; Don't ask to save files
+(setq compilation-ask-about-save nil)
+
+(require 'ansi-color)
+
+(defun colorize-compilation-buffer ()
+  "Colorize the compilation buffer and get escapes parsed."
+  (ansi-color-apply-on-region compilation-filter-start (point-max)))
+
+(add-hook 'compilation-filter-hook #'colorize-compilation-buffer)
+#+end_src
+
+*** Terminal Emulators and Shells
+[[https://masteringemacs.org/article/complete-guide-mastering-eshell][Usefull Article on Eshell]]
+
+#+begin_src emacs-lisp :results silent
+(defconst MY/TERM-HISTORY-SIZE 5000)
+#+end_src
+
+| =eshell= | Built-in |
+| =vterm=  | [[https://github.com/akermu/emacs-libvterm][Github]]   |
+**** Eshell
+#+begin_src emacs-lisp :results silent
+;; REVIEW: `em-smart', aliases, ...
+
+(use-package eshell
+  :commands eshell
+  :custom
+  (eshell-history-size MY/TERM-HISTORY-SIZE)
+  (eshell-hist-ignoredups t)
+  (eshell-prompt-function
+   (lambda nil (concat (eshell/pwd) " λ ")))
+  :hook (eshell-mode . rename-uniquely))
+#+end_src
+
+**** VTerm
+#+begin_src emacs-lisp :results silent
+(use-package vterm
+  :if (and (executable-find "cmake") (executable-find "libtool"))
+  :straight t
+  :commands (vterm vterm-other-window)
+  :custom
+  (vterm-kill-buffer-on-exit t) ; kill the buffer when exiting the last shell
+  (vterm-max-scrollback MY/TERM-HISTORY-SIZE)
+  ;; Compile without `vterm-module' without asking first
+  (vterm-always-compile-module t)
+  :config
+  (defun my/vterm-mode-setup ()
+    "Adjust the evil-cursor for the terminal."
+    (setq-local evil-move-cursor-back nil
+                evil-insert-state-cursor 'box)
+    ;; use the `fixed-pitch' font (Cascadia Code) for terminal buffers
+    (set (make-local-variable 'buffer-face-mode-face) 'fixed-pitch)
+    (buffer-face-mode t))
+  :bind
+  (:map vterm-mode-map
+        ;; Paste like in any other terminal
+        ("C-S-v" . vterm-yank))
+  :hook
+  (vterm-mode . my/vterm-mode-setup)
+  ;; Make sure the buffer name is unique, so that we can use multiple
+  ;; terminal buffers at once.
+  (vterm-mode . rename-uniquely))
+#+end_src
+
+** Diff
+| =ediff= | Built-in |
+*** Ediff
+#+begin_src emacs-lisp :results silent
+;; https://oremacs.com/2015/01/17/setting-up-ediff/
+(use-package ediff
+  :commands ediff-mode
+  :custom
+  (ediff-window-setup-function #'ediff-setup-windows-plain)
+  (ediff-split-window-function #'split-window-horizontally)
+  (ediff-diff-options "-w") ; ignore whitespaces
+  :config
+  (ediff-setup-keymap)
+  (defun my/ediff-save-window-config ()
+    "Save the state of the window configuration before invoking ediff."
+    (setq ediff-saved-window-configuration
+          (current-window-configuration)))
+  (defun my/ediff-restore-window-config ()
+    "Restore the window configuration to how it used to be."
+    (set-window-configuration ediff-saved-window-configuration))
+  :hook
+  (ediff-before-setup         . my/ediff-save-window-config)
+  ((ediff-quit ediff-suspend) . my/ediff-restore-window-config))
+#+end_src
+
+* Programming
+** Language Servers
 | =eglot= | [[https://github.com/joaotavora/eglot][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 ;; NOTE: yasnippet-mode needs to be active before eglot
 (use-package eglot
   :straight t
   :commands eglot-ensure
   :custom
-  ; only reconnect after failure if the previous connection lastest more then 10 sec
+  (eglot-connect-timeout 15)
+  ; reconnect if the previous connection lasted more then 10s.
   (eglot-autoreconnect 10)
   ; Shut down the server after killing the last buffer
   (eglot-autoshutdown t)
@@ -1414,27 +2080,20 @@ A Git Porcelain inside Emacs.
   (eglot-strict-mode '())
   :config
   (setq read-process-output-max (* 2 1024 1024)) ;; 2mb (default 400kb)
-  (add-to-list 'eglot-stay-out-of 'company)
+  (add-to-list 'eglot-stay-out-of 'company) ; don't alter company
   (setq eglot-server-programs
       (append '((yaml-mode         . ("yaml-language-server" "--stdio"))
                 (dockerfile-mode   . ("docker-langserver" "--stdio"))
                 ((c++-mode c-mode) . "clangd")
                 (rust-mode           "rust-analyzer")
-                (json-mode         . ("json-languageserver" "--stdio"))
                 (mhtml-mode        . ("html-languageserver" "--stdio"))
                 (vue-mode          . ("vls" "--stdio"))
-                (ts-tsx-mode       . ("typescript-language-server" "--stdio"))
                 (css-mode          . ("css-languageserver" "--stdio"))
                 (sql-mode          . ("sql-language-server" "up" "--method" "stdio")))
               eglot-server-programs))
-  ;; FIXME: this is never added to the hook
-  (defun my/eglot-write-contents ()
+  (defun my/eglot-before-save ()
     "Format the buffer before saving."
-    (add-hook 'write-contents-functions
-              #'(lambda()
-                  (save-excursion
-                    (eglot-format-buffer)))
-              10))
+    (add-hook 'before-save-hook #'eglot-format-buffer 10 t))
   :general
   (:states 'normal
            :keymaps 'eglot-mode-map
@@ -1443,7 +2102,7 @@ A Git Porcelain inside Emacs.
            "gD"     'eglot-find-declaration
            "gi"     'eglot-find-implementation
            "gt"     'eglot-find-typeDefinition
-           "gh"     'eldoc)
+           "K"      'eldoc)
   (:states 'visual
            :keymaps 'eglot-mode-map
            "ff" 'eglot-format)
@@ -1460,74 +2119,155 @@ A Git Porcelain inside Emacs.
    "cs" 'eglot-shutdown
    "cR" 'eglot-reconnect)
   :hook
-  (eglot-mode . eldoc-mode)
-  (eglot-mode . my/eglot-write-contents))
+  (eglot-mode . eldoc-mode) ; REVIEW: is this necesarry?
+  (eglot-mode . my/eglot-before-save))
 #+end_src
 
-| =rust-mode= | [[https://github.com/rust-lang/rust-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
+** Snippets
+| =yasnippet=          | [[https://github.com/joaotavora/yasnippet][Github]] |
+| =yasnippet-snippets= | [[https://github.com/AndreaCrotti/yasnippet-snippets][Github]] |
+#+begin_src emacs-lisp :results silent
+;; REVIEW: current `company-mode' keymap doesn't play well with `yasnippet'
+(use-package yasnippet
+  :straight t
+  :custom
+  (yas-prompt-functions '(yas-completing-prompt))
+  :config
+  (yas-reload-all)
+  :hook (prog-mode . yas-minor-mode))
+
+(use-package yasnippet-snippets
+  :straight t
+  :after yasnippet)
+#+end_src
+
+** Errors
+| =flycheck= | [[https://www.flycheck.org/en/latest/index.html][Flycheck]] |
+#+begin_src emacs-lisp :results silent
+;; Flymake got better but Flycheck just offers too many linters and checkers
+;; out of the box
+;; REVIEW: more settings?
+(use-package flycheck
+  :straight t
+  :custom
+  ;; When to check the syntax
+  (flycheck-check-syntax-automatically '(idle-buffer-switch idle-change))
+  (flycheck-idle-change-delay 0.80)
+  (flycheck-idle-buffer-switch-delay 1.50)
+  :config
+  (defhydra my/hydra-flycheck
+    (:pre (flycheck-list-errors)
+          :post (quit-windows-on flycheck-error-list-buffer)
+          :hint nil)
+    "Errors"
+    ("s" flycheck-error-list-set-filter "Filter")
+    ("j" flycheck-next-error "Next")
+    ("k" flycheck-previous-error "Previous")
+    ("gg" flycheck-first-error "First")
+    ("G" (progn (goto-char (point-max)) (flycheck-previous-error)) "Last")
+    ("q" nil))
+  :general
+  (my/leader-def "ne" '(my/hydra-flycheck/body :which-key "Errors"))
+  :hook (prog-mode . flycheck-mode))
+#+end_src
+
+** Languages
+*** Rust
+| =rust-mode=  | [[https://github.com/rust-lang/rust-mode][Github]] |
+| =cargo-mode= | [[https://github.com/kwrooijen/cargo.el][Github]] |
+#+begin_src emacs-lisp :results silent
 (use-package rust-mode
   :straight t
   :mode "\\.rs\\'"
+  :custom
+  (rust-format-on-save t) ; REVIEW: is this a bit overkill?
   :config
-  (defun my/rust-fill-column ()
-    (setq-local fill-column 99
-                indent-tabs-mode nil))
-  :bind
-  (:map rust-mode-map
-      ("C-c C-c" . rust-run)
-      ("C-c C-t" . rust-test)
-      ("C-c C-v" . rust-check)
-      ("C-c C-l" . rust-run-clippy)
-      ("C-c C-b" . rust-compile))
+  (defun my/rust-mode-setup ()
+    "Setup `rust-mode'"
+    ;; Automatically becomes buffer-local when set
+    (setq fill-column 99
+          indent-tabs-mode nil))
   :hook
   (rust-mode . eglot-ensure)
-  (rust-mode . my/rust-fill-column))
+  (rust-mode . my/rust-mode-setup))
 #+end_src
 
+#+begin_src emacs-lisp :results silent
+;; Perform Cargo tasks within Rust projects.
+(use-package cargo
+  :if (executable-find "cargo")
+  :straight t
+  :bind-keymap
+  ("C-c" . cargo-minor-mode-command-map)
+  :hook (rust-mode . cargo-minor-mode))
+#+end_src
+*** Go
 | =go-mode= | [[https://github.com/dominikh/go-mode.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package go-mode
   :straight t
   :mode "\\.go\\'"
   :config
-  ;; REVIEW: does this work?
-  (setq-local indent-tabs-mode t
-              tab-width 2)
-  :hook (go-mode . eglot-ensure))
+  (defun my/go-mode-setup ()
+    (setq indent-tabs-mode t
+          tab-width 2))
+  :hook
+  (go-mode . eglot-ensure)
+  (go-mode . my/go-mode-setup))
 #+end_src
 
+*** Python
 | =python-mode= | Built-in |
 | =pyvenv-mode= | [[https://github.com/jorgenschaefer/pyvenv][Github]]   |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package python
-  :commands python-mode
   :custom
   (python-shell-interpreter "python3")
+  (python-indent-offset 4) ; default
   :hook (python-mode . eglot-ensure))
 
-;; REVIEW: is this buffer local?
 (use-package pyvenv
   :straight t
-  :after python
+  :hook (python-mode . pyvenv-mode))
+#+end_src
+
+*** C and C++
+| =cc-mode= | Built-in |
+| =cpp=     | Built-in |
+#+begin_src emacs-lisp :results silent
+(use-package cc-mode
   :config
-  (pyvenv-mode +1))
+  (defun my/cc-mode-setup ()
+    "Setup `cc-mode'"
+    (setq indent-tabs-mode t
+          tab-width 2))
+  :hook
+  (c-mode . eglot-ensure)
+  (c-mode . my/cc-mode-setup))
+
+(use-package cpp
+  :config
+  (defun my/c++-mode-setup ()
+    "Setup `c++-mode'"
+    (setq indent-tabs-mode t
+          tab-width 2))
+  :hook
+  (c++-mode . eglot-ensure)
+  (c++-mode . my/c++-mode-setup))
 #+end_src
 
-| =c-mode=   | Built-in |
-| =c++-mode= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package c-mode
-  :commands c-mode
-  :hook (c-mode . eglot-ensure))
-
-(use-package c++-mode
-  :commands c++-mode
-  :hook (c++-mode . eglot-ensure))
+*** Lisp
+| =slime= | [[https://github.com/slime/slime][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package slime
+  :straight t
+  :mode ("(\\.\\(lisp\\|lsp\\|l\\|cl\\|fasl\\)\\'"
+         . slime-mode))
 #+end_src
 
+*** Web
 | =web-mode= | [[https://github.com/fxbois/web-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package web-mode
   :straight t
   :commands web-mode
@@ -1538,30 +2278,30 @@ A Git Porcelain inside Emacs.
   (web-mode-enable-auto-quoting nil))
 #+end_src
 
+****  Javascript
 | =js-mode= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-; Works for *.js, *.jsx and files
-;; REVIEW: need to adjust `evil-shift-width'?
+#+begin_src emacs-lisp :results silent
+; Works for *.js, *.jsx *.json and files
 (use-package js
-  :config
-  (setq-default js-indent-level 2)
+  :custom
+  (js-indent-level 2)
   :hook (js-mode . eglot-ensure))
 #+end_src
 
+****  Typescript
 | =typescript-mode= | [[https://github.com/emacs-typescript/typescript.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package typescript-mode
   :straight t
-  :mode "\\.ts\\'"
-  :config
-  (setq-default typescript-indent-level 2)
+  :mode "\\.tsx?\\'"
+  :custom
+  (typescript-indent-level 2)
   :hook (typescript-mode . eglot-ensure))
-
-;; TODO: find a suiting solution for tsx-files
 #+end_src
 
+****  Vue.js
 | =vue-mode= | Custom |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (define-derived-mode vue-mode
   web-mode "Vue.js"
   "Major mode for vue-files."
@@ -1571,127 +2311,140 @@ A Git Porcelain inside Emacs.
 (add-hook 'vue-mode-hook #'eglot-ensure)
 #+end_src
 
-| =sgml-mode= | Built-in |
-| =css-mode=  | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package sgml-mode
+****  HTML and CSS
+| =mhtml-mode= | Built-in |
+| =css-mode=   | Built-in |
+#+begin_src emacs-lisp :results silent
+(use-package mhtml-mode
   :custom
   (sgml-basic-offset 2)
-  :hook
-  (sgml-mode . eglot-ensure))
+  :hook (mhtml-mode . eglot-ensure))
 
 (use-package css-mode
   :custom
   (css-indent-offset 2)
-  :hook
-  (css-mode . eglot-ensure))
+  :hook (css-mode . eglot-ensure))
 #+end_src
 
-| =json-mode= | Custom |
-| =yaml-mode= | [[https://github.com/yoshiki/yaml-mode][Github]] |
-| =nix-mode=  | [[https://github.com/NixOS/nix-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
-;; NOTE: js-mode covers json-files
-(define-derived-mode json-mode
-  js-mode "JSON"
-  "Major mode for json-files.")
-
-(add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
-; use the json-languageserver
-(add-hook 'json-mode-hook #'eglot-ensure)
-
-(use-package yaml-mode
-  :straight t
-  :mode "\\.ya?ml\\'"
-  :hook
-  (yaml-mode . eglot-ensure))
-
-(use-package nix-mode
-  :straight t
-  :mode "\\.nix\\'")
-#+end_src
-
-
-| =prettier= | [[https://github.com/jscheid/prettier.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package prettier
-  :straight t
-  :commands (prettier-prettify prettier-prettify-region)
-  :custom
-  (prettier-inline-errors-flag t)
-  (prettier-pre-warm 'none)
-  :config
-  (defun my/prettier-write-contents ()
-    "Format the buffer with prettier before saving."
-    (add-hook 'write-contents-functions
-              #'(lambda()
-                  (save-excursion
-                    (prettier-prettify)))
-              90))
-  :hook ((js-mode
-          typescript-mode
-          vue-mode
-          mhtml-mode
-          css-mode
-          json-mode
-          yaml-mode)
-  . prettier-mode)
-  (prettier-mode . my/prettier-write-contents))
-#+end_src
-
-| =restclient= | [[https://github.com/pashky/restclient.el][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package restclient
-  :straight t
-  :mode ("\\.http\\'" . restclient-mode))
-
-; REVIEW: custom bindings? formatting (prettier)?
-#+end_src
-
-| =sh-script= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package sh-script
-  :commands sh-mode
-  :custom
-  (sh-basic-offset 4) ; Default value
-  :hook
-  (sh-mode . eglot-ensure))
-#+end_src
-
-| =sql= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-(use-package sql
-  :commands sql-mode
-  :hook
-  (sql-mode . eglot-ensure))
-#+end_src
-
+*** Markdown
 | =markdown-mode= | [[https://github.com/jrblevin/markdown-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package markdown-mode
   :straight t
   :mode (("README\\.md\\'" . gfm-mode)
          ("\\.md\\'"       . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
   :custom
-  (markdown-command "multimarkdown"))
+  (markdown-command
+   (or (executable-find "multimarkdown") (executable-find "markdown"))))
 #+end_src
 
+***  Markup
+| =yaml-mode= | [[https://github.com/yoshiki/yaml-mode][Github]] |
+| =yaml-mode= | [[https://github.com/yoshiki/yaml-mode][Github]] |
+| =nix-mode=  | [[https://github.com/NixOS/nix-mode][Github]] |
+**** XML
+#+begin_src emacs-lisp :results silent
+;; TODO: setup LSP (https://github.com/eclipse/lemminx)
+(use-package nxml
+  :mode ("\\.x[ms]l\\'" . nxml-mode)
+  :custom
+  (nxml-attribute-indent 2)
+  (nxml-child-indent 2)
+  (nxml-outline-child-indent 2)
+  (nxml-slash-auto-complete-flag t)
+  (nxml-bind-meta-tab-to-complete-flag nil))
+#+end_src
+
+**** YAML
+#+begin_src emacs-lisp :results silent
+(use-package yaml-mode
+  :straight t
+  :mode "\\.ya?ml\\'"
+  :hook
+  (yaml-mode . eglot-ensure)
+  ;; `yaml-mode' is based on `text-mode'
+  (yaml-mode . whitespace-mode))
+#+end_src
+**** Nix
+#+begin_src emacs-lisp :results silent
+(use-package nix-mode
+  :straight t
+  :mode "\\.nix\\'")
+#+end_src
+
+**** Docker
 | =dockerfile-mode= | [[https://github.com/spotify/dockerfile-mode][Github]] |
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :results silent
 (use-package dockerfile-mode
   :straight t
   :mode "Dockerfile\\'"
   :custom
-  (dockerfile-mode-command "podman")
+  ;; Prefer podman over docker
+  (dockerfile-mode-command
+   (or (executable-find "podman") (executable-find "docker")))
   :config
   (put 'docker-image-name 'safe-local-variable #'stringp)
-  :hook
-  (dockerfile-mode . eglot-ensure))
+  :hook (dockerfile-mode . eglot-ensure))
 #+end_src
 
-#+begin_src emacs-lisp :tangle yes
-;; Systemd-files
+**  Formatting
+| =prettier= | [[https://github.com/jscheid/prettier.el][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package prettier
+  :straight t
+  :commands (prettier-prettify prettier-prettify-region)
+  :custom
+  (prettier-inline-errors-flag t)
+  (prettier-pre-warm 'none) ; speed up loading files
+  :config
+  (setq prettier-timeout-seconds 15)
+  (defun my/prettier-before-save ()
+    "Format the buffer with prettier before saving."
+    (add-hook 'before-save-hook #'prettier-prettify 90 t))
+  :hook
+  ((js-mode
+    typescript-mode
+    vue-mode
+    mhtml-mode
+    css-mode
+    yaml-mode)
+   . prettier-mode)
+  (prettier-mode . my/prettier-before-save))
+#+end_src
+
+| =restclient= | [[https://github.com/pashky/restclient.el][Github]] |
+#+begin_src emacs-lisp :results silent
+(use-package restclient
+  :straight t
+  :mode ("\\.http\\'" . restclient-mode)
+  :config
+  (defun my/restclient-new-buffer ()
+    "Create a new temporary buffer using `restclient-mode'."
+    (interactive)
+    (my/new-empty-buffer "*http*" #'restclient-mode))
+  :general
+  (my/leader-def
+    "nr" 'my/restclient-new-buffer))
+#+end_src
+
+| =sh-script= | Built-in |
+#+begin_src emacs-lisp :results silent
+(use-package sh-script
+  :custom
+  (sh-basic-offset 2)
+  :hook (sh-mode . eglot-ensure))
+#+end_src
+
+| =sql= | Built-in |
+#+begin_src emacs-lisp :results silent
+;; REVIEW: customization?
+(use-package sql
+  :hook (sql-mode . eglot-ensure))
+#+end_src
+
+Systemd-files
+#+begin_src emacs-lisp :results silent
 (setq auto-mode-alist
       (append '(("\\.service\\'"   . conf-unix-mode)
                 ("\\.timer\\'"     . conf-unix-mode)
@@ -1705,252 +2458,4 @@ A Git Porcelain inside Emacs.
                 ("\\.network\\'"   . conf-unix-mode)
                 ("\\.link\\'"      . conf-unix-mode))
               auto-mode-alist))
-#+end_src
-
-| =polymode= | [[https://github.com/polymode/polymode][Github]] |
-#+begin_src emacs-lisp :tangle yes
-(use-package polymode
-  :straight t
-  :commands (define-hostmode define-innermode define-polymode)
-  :config
-  (setq polymode-prefix-key (kbd "C-c n")))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(define-hostmode poly-js-hostmode :mode 'js-mode)
-
-(define-innermode poly-css-expr-js-innermode
-  :mode 'css-mode
-  ;; REVIEW: improve regex?
-  :head-matcher "css`.*"
-  :tail-matcher ".*`"
-  :head-mode 'host
-  :tail-mode 'host)
-
-(define-polymode poly-js-css-mode
-  :hostmode 'poly-js-hostmode
-  :innermodes '(poly-css-expr-js-innermode)
-  (define-key poly-js-css-mode-map (kbd "C-c C-c") 'polymode-eval-chunk))
-
-;; TODO: add this mode for ts(x) as well
-(add-to-list 'auto-mode-alist '("\\.jsx?\\'" . poly-js-css-mode))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; text-scale-adjust looks at the last key typed to determine which action to take.
-(global-set-key (kbd "C-+") 'text-scale-adjust)
-(global-set-key (kbd "C--") 'text-scale-adjust)
-(global-set-key (kbd "C-=") 'text-scale-adjust)
-(global-set-key (kbd "C-0") 'text-scale-adjust)
-#+end_src
-
-Prefer vertical splitting when the frame is fullscreen.
-#+begin_src emacs-lisp :tangle yes
-;; prefer vertical splitting when the frame is fullscreen.
-(setq split-height-threshold 50
-      split-width-threshold 125)
-
-;; https://www.gnu.org/software/emacs/manual/html_mono/elisp.html#Buffer-Display-Action-Alists
-(setq display-buffer-base-action
-  '((display-buffer-reuse-window ;; This function tries to display buffer by finding a window that is already displaying it
-     ;; if there already is a window with a buffer of the same mode use this one.
-     ;; The types of modes to look at in this evaluation are provider with the mode key in the
-     ;; alist below
-     display-buffer-reuse-mode-window
-     display-buffer-in-previous-window ;;  tries to display buffer in a window where it was displayed previously.
-     display-buffer-pop-up-window ;; split the window. This respects split-height/width-threshold
-     display-buffer-same-window ;; this (current) window
-     )
-    . ((inhibit-same-window . nil) ;; Allow using the same window.
-       (resuable-frames . nil) ;; Do not use other frames
-       (inhibit-switch-frame t) ;; prevents an another frame from being raised or selected
-       (preserve-size (t . t)) ;; preserve the width and height of the chosen buffer (must already exist)
-       ;; display-buffer-reuse-mode-window
-       (mode . (help-mode magit-mode eldoc-mode)))))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: use other color?
-(defhydra my/hydra-window (:color amaranth)
-  "Window management"
-  ("h" windmove-left "Left" :column "Navigate")
-  ("j" windmove-down "Down")
-  ("k" windmove-up "Up")
-  ("l" windmove-right "Right")
-  ("v" split-window-vertically "Vertical" :column "Split")
-  ("x" split-window-horizontally "Horizontal")
-  ("H" windmove-swap-states-left "Left" :column "Swap")
-  ("J" windmove-swap-states-down "Down")
-  ("K" windmove-swap-states-up "Up")
-  ("L" windmove-swap-states-right "Right")
-  ("<" shrink-window-horizontally "Shrink (h)" :column "Resize")
-  (">" enlarge-window-horizontally "Grow (h)")
-  ("," shrink-window "Shrink (v)")
-  ("." enlarge-window "Grow (h)")
-  ("0" delete-window "Window" :column "Delete")
-  ("o" delete-other-windows "Other" :exit t)
-  ("u" winner-undo "Undo")
-  ("r" winner-redo "Redo")
-  ("q" nil "Quit" :column "Exit" :exit t))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(defun my/kill-all-buffers ()
-  "kill all buffers without regard for their origin."
-  (interactive)
-  (mapc 'kill-buffer (buffer-list))
-  ; Change the default directory back to $HOME
-  (cd "~/"))
-
-(defun my/kill-other-buffers ()
-  "Kill all other buffers."
-  (interactive)
-  (mapc 'kill-buffer (delq (current-buffer) (buffer-list))))
-
-(defun my/revert-buffer-no-confirm ()
-  "Revert buffer without confirmation."
-  (interactive)
-  (revert-buffer :ignore-auto :noconfirm))
-
-;; REVIEW: use this as initial-buffer and for new tabs?
-(defun my/new-empty-buffer ()
-  "Create a new empty buffer."
-  (interactive)
-  (let ((buf (generate-new-buffer "untitled")))
-    (switch-to-buffer buf)
-    (funcall initial-major-mode)
-    (setq buffer-offer-save nil) ; don't prompt to save this buffer
-    buf))
-
-(defhydra my/hydra-buffers (:color amaranth)
-  "Buffer management"
-  ("h" switch-to-next-buffer "Next" :column "Navigate")
-  ("l" switch-to-prev-buffer "Previous")
-  ("w" switch-to-buffer-other-window "Window")
-  ("t" switch-to-buffer-other-tab "Tab")
-  ("F" switch-to-buffer-other-frame "Frame")
-  ("f" counsel-fzf "Fzf" :column "Find" :exit t)
-  ("g" counsel-rg "Grep" :exit t)
-  ("b" counsel-switch-buffer "Buffers" :exit t)
-  ("r" rename-buffer "Rename" :column "Action")
-  ("n" my/new-empty-buffer "New")
-  ("R" my/revert-buffer-no-confirm "Revert")
-  ("s" save-buffer  "Save")
-  ("0" kill-this-buffer "This" :column "Delete")
-  ("c" clean-buffer-list "Clean")
-  ("o" my/kill-other-buffers "Other" :exit t)
-  ("a" my/kill-all-buffers "All")
-  ("q" nil "Quit" :column "Exit" :exit t))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(my/leader-def
-  "SPC" '(execute-extended-command :which-key "M-x")
-  ";"   '(eval-expression :which-key "Eval")
-  "a"   '(org-agenda :which-key "Agenda")
-  "w"   '(my/hydra-window/body :which-key "Windows")
-  "d"   '(:ignore t :which-key "Desktop")
-  "dd"  '(my/desktop-delete :which-key "Delete")
-  "ds"  '(desktop-save :which-key "Save")
-  "dR"  '(desktop-revert :which-key "Revert")
-  "s"   '(:ignore t :which-key "Server")
-  "ss"  '(server-start :which-key "Start")
-  "sd"  '(server-force-delete :which-key "Delete")
-  ;; "u"  '(straight-* :which-key "Update")
-  "l"   '(:ignore t :which-key "Launch")
-  "lm"  '(mu4e :which-key "Mail")
-  "lb"  '(elpher-go :which-key "Browser")
-  "lf"  '(elfeed :which-key "Feeds")
-  "lt"  '(vterm :which-key "Terminal")
-  "le"  '(eshell :which-key "Eshell")
-  "f"   '(my/hydra-buffers/body :which-key "Buffers")
-  "b"   '(:keymap bookmark-map :which-key "Bookmarks")
-  "q"   '(:ignore t :which-key "Quit")
-  "qq"  '(save-buffers-kill-terminal :which-key "This Frame")
-  ;; TODO: delete all frames
-  "qo"  '(delete-other-frames :which-key "Other"))
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: when to use defalias instead?
-(evil-ex-define-cmd "eb"     'eval-buffer)
-(evil-ex-define-cmd "er"     'eval-region)
-(evil-ex-define-cmd "kb"     'kill-buffer)
-(evil-ex-define-cmd "kab"    'my/kill-all-buffers)
-(evil-ex-define-cmd "cp"     'check-parens)
-(evil-ex-define-cmd "mu[4e]" 'mu4e)
-(evil-ex-define-cmd "lt"     'load-theme)
-#+end_src
-
-Start the server if it's not already running or using Emacs from a terminal
-| =server= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; REVIEW: closing buffers like magit commit closes the entire frame
-;; REVIEW: rewrite this if necessary
-(use-package server
-  :if (display-graphic-p)
-  :config
-  (defun my/server-start-maybe ()
-    (unless (server-running-p)
-      (server-start)))
-  :custom
-  (server-kill-new-buffers t)
-  (server-raise-frame t) ; raise new frames (default)
-  :hook
-  (server-done . delete-frame)
-  (after-init  . my/server-start-maybe))
-#+end_src
-
-| =desktop= | Built-in |
-#+begin_src emacs-lisp :tangle yes
-;; TODO: only use when there was no server already running
-;; https://github.com/purcell/emacs.d/blob/master/lisp/init-sessions.el
-;; https://www.emacswiki.org/emacs/DeskTop
-(use-package desktop
-  ;; :unless (server-running-p)
-  :custom
-  (desktop-base-file-name (expand-file-name "desktop" user-emacs-directory))
-  (desktop-base-lock-name (expand-file-name "desktop.lock" user-emacs-directory))
-  ; only restore one buffer immediately. The rest is loaded lazy.
-  (desktop-restore-eager 1)
-  ; don't restore the frame and window configuration
-  (desktop-restore-frames nil)
-  :config
-  ;; TODO: review these settings
-  (setq history-length 250) ;; SEE: (put 'evil-ex-history 'history-length 50)
-  ;; TODO: do not store dired, tramp, eglot, *elfeed-search*, ...
-  (setq desktop-globals-to-save
-        (append '((file-name-history      . 100)
-                  (minibuffer-history     . 50)
-                  (search-ring            . 20)
-                  (ivy-history            . 100)
-                  (magit-revision-history . 50))
-                desktop-globals-to-save))
-  ;; clear everything
-  ;; (setq desktop-globals-to-clear ...)
-  (defun my/desktop-delete ()
-    "Clear and remove the state of Emacs saved in a desktop file."
-    (interactive)
-    (desktop-clear) ; delete all saved buffers
-    (desktop-remove) ; delete the desktop-file
-    (desktop-save-mode -1)) ; do not ask to save the current state
-  :hook
-  (after-init . desktop-read)
-  (after-init . desktop-save-mode))
-
-;; REVIEW: (add-hook 'after-init-hook 'savehist-mode)
-#+end_src
-
-Minibuffer
-#+begin_src emacs-lisp :tangle yes
-(define-key minibuffer-local-map (kbd "C-w") 'backward-kill-word)
-;; backward-kill-sentence is bound to C-a C-k
-#+end_src
-
-#+begin_src emacs-lisp :tangle yes
-(add-hook 'after-init #'global-auto-revert-mode)
-;; Enable folding by using hide-show-mode
-(add-hook 'prog-mode-hook #'hs-minor-mode)
-;; winner-mode is used in my/hydra-window
-(add-hook 'window-setup-hook #'winner-mode)
 #+end_src
