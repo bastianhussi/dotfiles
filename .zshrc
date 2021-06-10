@@ -1,75 +1,85 @@
-# Aliases
-alias ls='ls --color=auto'
-alias ll='ls -lah --color=auto'
-alias la='ls -Alah --color=auto'
-alias grep='grep --color=auto'
-alias ec="$EDITOR ${ZDOTDIR:-$HOME}/.zshrc" # edit .zshrc
-alias sc="source ${ZDOTDIR:-$HOME}/.zshrc"  # reload zsh configuration 
-alias cp='cp -i'
-alias mv='mv -i'
-alias rm='rm -I'
-
-alias du='du -sh'
-alias free='free -h'
-
-alias docker="podman"
-
-alias vi="nvim"
-alias vim="nvim"
-alias vimdiff="nvim -d"
-
 autoload -Uz compinit
 compinit
-zstyle ':completion:*' menu select
-zstyle ':completion::complete:*' gain-privileges 1
+zstyle ':completion::complete:*' gain-privileges 1 # REVIEW: what does the `1` do?
+zstyle ':completion:*' menu select=2 # selection style is enabled as soon as there are at least 2 entries to choose from
+
 setopt COMPLETE_ALIASES
 
-# Make soure this gets sourced after loading compinit
-kubectl () {
-    command kubectl $*
-    if [[ -z $KUBECTL_COMPLETE ]]
-    then
-        source <(command kubectl completion zsh)
-        KUBECTL_COMPLETE=1
+alias grep="grep $1"
+alias ls="ls $1"
+
+alias la="ls -Ahlv $1"
+
+# TODO: make if and then in one line
+if command -v nvim &> /dev/null
+then
+    alias vi="nvim $1"
+    alias vi="nvim $1"
+    alias vim="nvim $1"
+    alias vimdiff="nvim -d $1"
+fi
+
+# SEE: https://jdhao.github.io/2021/03/24/zsh_history_setup/
+# the detailed meaning of the below three variable can be found in `man zshparam`.
+# TODO: add fallback
+export HISTFILE="$XDG_CACHE_HOME/zsh_history"
+export HISTSIZE=1000   # the number of items for the internal history list
+export SAVEHIST=10000   # maximum number of items for the history file
+
+# The meaning of these options can be found in man page of `zshoptions`.
+setopt HIST_IGNORE_ALL_DUPS  # do not put duplicated command into history list
+setopt HIST_SAVE_NO_DUPS  # do not save duplicated command
+setopt HIST_REDUCE_BLANKS  # remove unnecessary blanks
+setopt INC_APPEND_HISTORY_TIME  # append command to history file immediately after execution
+setopt EXTENDED_HISTORY  # record command start time
+
+alias history="fc -l 1 $1"
+
+# Detect whether the current directory is a git repository.
+is_git_repository() {
+  git branch > /dev/null 2>&1
+}
+
+set_git_branch () {
+    # Note that for new repo without commit, git rev-parse --abbrev-ref HEAD
+    # will error out.
+    if git rev-parse --abbrev-ref HEAD > /dev/null 2>&1; then
+        BRANCH="("
+        BRANCH+=$(git rev-parse --abbrev-ref HEAD)
+        BRANCH+=")"
+    else
+        BRANCH="(bare)"
     fi
 }
 
-helm () {
-    command helm $*
-    if [[ -z $HELM_COMPLETE ]]
-    then
-        source <(command helm completion zsh)
-        HELM_COMPLETE=1
+precmd() {
+    if is_git_repository; then
+        set_git_branch
+    else
+        BRANCH=""
     fi
+
+    PROMPT=""
+
+    PROMPT="%F{green}%n%f" # username
+    PROMPT+="@%F{magenta}%m%f" # @hostname
+    PROMPT+=" %F{blue}(${BRANCH})%f" # git branch
+
+    PROMPT+=" %# "
 }
 
-minikube () {
-    command minikube $*
-    if [[ -z $MINIKUBE_COMPLETE ]]
-    then
-        source <(command minikube completion zsh)
-        MINIKUBE_COMPLETE=1
-    fi
-}
+if [ -e /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
+  source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+fi
 
-# Change into directory by typing its name
-setopt AUTO_CD
-setopt NO_CASE_GLOB
-setopt GLOB_COMPLETE
-setopt SHARE_HISTORY
-setopt INC_APPEND_HISTORY
-setopt HIST_IGNORE_DUPS
+if [ -e /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
 
-# Keep 5000 lines of history within the shell and save it to ~/.zsh_history:
-HISTSIZE=5000
-SAVEHIST=5000
-HISTFILE=~/.zsh_history
-
-# Use vi keybindings even if our EDITOR is set to vi
+# Use Emacs bindings
+# -v for Vim
 bindkey -e
 
-# create a zkbd compatible hash;
-# to add other keys to this hash, see: man 5 terminfo
 typeset -g -A key
 
 key[Home]="${terminfo[khome]}"
@@ -116,55 +126,3 @@ zle -N down-line-or-beginning-search
 
 [[ -n "${key[Up]}"   ]] && bindkey -- "${key[Up]}"   up-line-or-beginning-search
 [[ -n "${key[Down]}" ]] && bindkey -- "${key[Down]}" down-line-or-beginning-search
-
-declare -A ZINIT
-ZINIT[HOME_DIR]=$XDG_DATA_HOME/zinit
-ZINIT[BIN_DIR]=$ZINIT[HOME_DIR]/bin
-ZINIT[PLUGINS_DIR]=$ZINIT[HOME_DIR]/plugins
-ZINIT[COMPLETIONS_DIR]=$ZINIT[HOME_DIR]/completions
-ZINIT[SNIPPETS_DIR]=$ZINIT[HOME_DIR]/snippets
-ZINIT[ZCOMPDUMP_PATH]=$XDG_CACHE_HOME/zcompdump/zcompdump-zinit
-ZINIT[MUTE_WARNINGS]=0
-ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
-
-### Added by Zinit's installer
-if [[ ! -f $ZINIT[HOME_DIR]/bin/zinit.zsh ]]; then
-    print -P "%F{33}▓▒░ %F{220}Installing %F{33}DHARMA%F{220} Initiative Plugin Manager (%F{33}zdharma/zinit%F{220})…%f"
-    command mkdir -p "$ZINIT[HOME_DIR]" && command chmod g-rwX "$ZINIT[HOME_DIR]"
-    command git clone https://github.com/zdharma/zinit "$ZINIT[HOME_DIR]/bin" && \
-        print -P "%F{33}▓▒░ %F{34}Installation successful.%f%b" || \
-        print -P "%F{160}▓▒░ The clone has failed.%f%b"
-fi
-
-source "$ZINIT[HOME_DIR]/bin/zinit.zsh"
-autoload -Uz _zinit
-(( ${+_comps} )) && _comps[zinit]=_zinit
-
-# Load a few important annexes, without Turbo
-# (this is currently required for annexes)
-zinit light-mode for \
-    zinit-zsh/z-a-rust \
-    zinit-zsh/z-a-as-monitor \
-    zinit-zsh/z-a-patch-dl \
-    zinit-zsh/z-a-bin-gem-node
-
-### End of Zinit's installer chunk
-
-zinit light zsh-users/zsh-autosuggestions
-zinit light zsh-users/zsh-completions
-zinit light zsh-users/zsh-syntax-highlighting
-zinit light zsh-users/zsh-history-substring-search
-zinit light zsh-users/zsh-docker
-
-# Load OMZ Git library
-zinit snippet OMZL::git.zsh
-
-# Load Git plugin from OMZ
-zinit snippet OMZP::git
-zinit cdclear -q # <- forget completions provided up to this moment
-
-setopt promptsubst
-autoload -U colors && colors	
-
-# Load theme from OMZ
-zinit snippet OMZT::robbyrussell
