@@ -5,10 +5,10 @@ zstyle ':completion:*' menu select=2 # selection style is enabled as soon as the
 
 setopt COMPLETE_ALIASES
 
-alias grep="grep $1"
-alias ls="ls $1"
-
-alias la="ls -Ahlv $1"
+alias grep="grep --color=auto $1"
+alias ls="ls --color=auto $1"
+alias la="ls -Ahlv --color=auto $1"
+alias du="du -sh $1"
 
 # TODO: make if and then in one line
 if command -v nvim &> /dev/null
@@ -33,47 +33,46 @@ setopt HIST_REDUCE_BLANKS  # remove unnecessary blanks
 setopt INC_APPEND_HISTORY_TIME  # append command to history file immediately after execution
 setopt EXTENDED_HISTORY  # record command start time
 
+setopt AUTO_CD # change to a directory by typing its name
+
 alias history="fc -l 1 $1"
 
-# Detect whether the current directory is a git repository.
-is_git_repository() {
-  git branch > /dev/null 2>&1
+# Define the theme
+prompt_mytheme_setup() {
+    PS1=""
+    PS1+="%F{yellow}%n%f"
+    PS1+="@"
+#    PS1+="@%F{magenta}%m%f" # @hostname
+    PS1+="%F{blue}%B%~%b%f" # working directory
+    PS1+="%F{red}$(git_branch_name)%f" # git branch
+    PS1+="%F{magenta}λ%f " # lambda sign
 }
 
-set_git_branch () {
-    # Note that for new repo without commit, git rev-parse --abbrev-ref HEAD
-    # will error out.
-    if git rev-parse --abbrev-ref HEAD > /dev/null 2>&1; then
-        BRANCH="("
-        BRANCH+=$(git rev-parse --abbrev-ref HEAD)
-        BRANCH+=")"
-    else
-        BRANCH="(bare)"
-    fi
-}
+# SEE: https://medium.com/pareture/simplest-zsh-prompt-configs-for-git-branch-name-3d01602a6f33
 
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' enable git svn
+# This line obtains information from the vcs.
+zstyle ':vcs_info:git*' formats " (%b) "
 precmd() {
-    if is_git_repository; then
-        set_git_branch
-    else
-        BRANCH=""
-    fi
-
-    PROMPT=""
-
-    PROMPT="%F{green}%n%f" # username
-    PROMPT+="@%F{magenta}%m%f" # @hostname
-    PROMPT+=" %F{blue}(${BRANCH})%f" # git branch
-
-    PROMPT+=" %# "
+    vcs_info
 }
 
-if [ -e /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
-  source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+# Enable substitution in the prompt.
+setopt prompt_subst
+
+# Config for the prompt. PS1 synonym.
+prompt='%2/ ${vcs_info_msg_0_}> '
+
+ZSH_AUTOSUGGESTION="/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+ZSH_SYNTAX_HIGHLIGHTING="/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+
+if [ -e $ZSH_AUTOSUGGESTION ]; then
+  source $ZSH_AUTOSUGGESTION
 fi
 
-if [ -e /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-  source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [ -e $ZSH_SYNTAX_HIGHLIGHTING ]; then
+  source $ZSH_SYNTAX_HIGHLIGHTING
 fi
 
 # Use Emacs bindings
@@ -112,11 +111,11 @@ key[Shift-Tab]="${terminfo[kcbt]}"
 # Finally, make sure the terminal is in application mode, when zle is
 # active. Only then are the values from $terminfo valid.
 if (( ${+terminfo[smkx]} && ${+terminfo[rmkx]} )); then
-	autoload -Uz add-zle-hook-widget
-	function zle_application_mode_start { echoti smkx }
-	function zle_application_mode_stop { echoti rmkx }
-	add-zle-hook-widget -Uz zle-line-init zle_application_mode_start
-	add-zle-hook-widget -Uz zle-line-finish zle_application_mode_stop
+  autoload -Uz add-zle-hook-widget
+  function zle_application_mode_start { echoti smkx }
+  function zle_application_mode_stop { echoti rmkx }
+  add-zle-hook-widget -Uz zle-line-init zle_application_mode_start
+  add-zle-hook-widget -Uz zle-line-finish zle_application_mode_stop
 fi
 
 # History search
