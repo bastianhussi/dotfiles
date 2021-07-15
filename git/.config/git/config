@@ -1,0 +1,26 @@
+[user]
+	name = Bastian Hussi
+	email = bastian@ipfso.de
+[core]
+	editor = vim
+[alias]
+	st = status -sb
+	lg = log --oneline --graph --decorate --all
+	a = add .
+	cm = commit -a
+	co = checkout
+	c = checkout -
+	ft = fetch -ap
+	pl = pull
+	ps = push
+[merge]
+	tool = vimdiff
+	conflictStyle = diff3
+[diff]
+	tool = vimdiff
+[pull]
+	rebase = true
+[init]
+	defaultBranch = main
+[gpg]
+	program = gpg2
