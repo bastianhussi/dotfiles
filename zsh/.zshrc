@@ -5,10 +5,28 @@ zstyle ':completion:*' menu select=2 # selection style is enabled as soon as the
 
 setopt COMPLETE_ALIASES
 
+alias dc="cd $1"
+
+alias sc="source $1"
+
 alias grep="grep --color=auto $1"
 alias ls="ls --color=auto $1"
 alias la="ls -Ahlv --color=auto $1"
 alias du="du -sh $1"
+
+alias python="python3 $1"
+alias py="python $1"
+alias venv="python -m venv $1"
+
+if command -v podman &> /dev/null
+then
+    alias docker="podman $1"
+fi
+
+if command -v podman-compose &> /dev/null
+then
+    alias docker-compose="podman-compose $1"
+fi
 
 # TODO: make if and then in one line
 if command -v nvim &> /dev/null
@@ -37,18 +55,9 @@ setopt AUTO_CD # change to a directory by typing its name
 
 alias history="fc -l 1 $1"
 
-# Define the theme
-prompt_mytheme_setup() {
-    PS1=""
-    PS1+="%F{yellow}%n%f"
-    PS1+="@"
-#    PS1+="@%F{magenta}%m%f" # @hostname
-    PS1+="%F{blue}%B%~%b%f" # working directory
-    PS1+="%F{red}$(git_branch_name)%f" # git branch
-    PS1+="%F{magenta}λ%f " # lambda sign
-}
+# TODO: use lesskey to use Emacs bindings in less
 
-# SEE: https://medium.com/pareture/simplest-zsh-prompt-configs-for-git-branch-name-3d01602a6f33
+# See: https://medium.com/pareture/simplest-zsh-prompt-configs-for-git-branch-name-3d01602a6f33
 
 autoload -Uz vcs_info
 zstyle ':vcs_info:*' enable git svn

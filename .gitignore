@@ -1,6 +1,4 @@
 __pycache__/
 .mbsyncrc
-config/emacs/private.*
-!config/emacs/init.el
-!config/emacs/early-init.el
-!config/emacs/*.org
+emacs/.config/emacs/private.*
+
